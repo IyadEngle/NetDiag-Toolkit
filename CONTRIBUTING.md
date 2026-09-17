@@ -5,7 +5,6 @@ Thanks for helping improve NetDiag Toolkit.
 ## Before opening an issue
 
 Please include:
-
 - Windows version
 - PowerShell version
 - NetDiag version/commit
@@ -22,3 +21,4 @@ Remove public IPs, MAC addresses, usernames and other private information before
 3. Keep changes small and readable.
 4. Avoid collecting or transmitting network data without explicit user action.
 5. Update documentation when behavior changes.
+6. Keep diagnostics read-only unless a future feature explicitly documents a change and asks for consent.

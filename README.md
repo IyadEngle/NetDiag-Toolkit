@@ -1,66 +1,136 @@
 # NetDiag Toolkit
 
-Lightweight, transparent Windows network diagnostics for troubleshooting connectivity, latency, DNS, HTTPS and path MTU.
+Lightweight, transparent Windows network diagnostics for troubleshooting connectivity, latency, DNS, HTTPS, path MTU and local network configuration.
 
-> **Status:** Early open-source release. Contributions, bug reports and test results are welcome.
+> **Current release:** `v0.2.0`
 
 ## What it does
 
 NetDiag Toolkit runs a repeatable local diagnostic report:
 
-- ICMP latency, packet loss, minimum/average/maximum latency
-- DNS resolution timing and resolved addresses
+- ICMP latency and packet loss
+- DNS resolution timing
+- Direct DNS-server comparison
 - HTTPS reachability and response timing
-- Path MTU discovery using ICMP with the Don't Fragment flag
-- Active network adapter and IP configuration summary
-- Optional JSON export for sharing or automation
+- Path MTU estimation using ICMP + Don't Fragment
+- Default gateway discovery and gateway ping
+- TCP connectivity checks for selected ports
+- Traceroute using the native Windows `tracert`
+- Wi-Fi state, signal and link information when available
+- Active adapter and IP configuration summary
+- Optional JSON and CSV report export
+
+The toolkit is intentionally transport-agnostic and does not silently change network settings or upload diagnostic data.
 
 ## Requirements
 
 - Windows 10/11
-- Windows PowerShell 5.1 or PowerShell 7+
-- ICMP may be affected by firewalls or remote-host configuration
+- Windows PowerShell 5.1+ or PowerShell 7+
+- Administrator rights are **not** normally required
+- Some tests depend on local firewall policy and the destination allowing ICMP/TCP
 
 ## Quick start
 
-Download `NetDiag.ps1`, open PowerShell in its folder, and run:
+Open PowerShell in the project folder:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
 .\NetDiag.ps1
 ```
 
-Custom targets:
+### Customize targets
 
 ```powershell
-.\NetDiag.ps1 -Target 1.1.1.1 -DnsName cloudflare.com -MtuHost 1.1.1.1
+.\NetDiag.ps1 `
+  -Target 1.1.1.1 `
+  -DnsName cloudflare.com `
+  -HttpsUrl https://www.cloudflare.com/ `
+  -MtuHost 1.1.1.1 `
+  -TraceHost 1.1.1.1
 ```
 
-Export a machine-readable report:
+### Test specific TCP ports
 
 ```powershell
-.\NetDiag.ps1 -JsonPath .\report.json
+.\NetDiag.ps1 -TcpHost 1.1.1.1 -TcpPorts 53,80,443
+```
+
+### Compare DNS servers
+
+```powershell
+.\NetDiag.ps1 `
+  -DnsServers 1.1.1.1,8.8.8.8 `
+  -DnsQuery cloudflare.com
+```
+
+### Export reports
+
+```powershell
+.\NetDiag.ps1 -JsonPath .\report.json -CsvPath .\report.csv
 ```
 
 ## Interpreting results
 
-A failed ping does **not** automatically mean the internet is down: some hosts block ICMP.
+A failed ICMP ping does not automatically mean the internet is down because some hosts and firewalls block ICMP.
 
-The MTU result is an **estimate of the ICMP path MTU** to the selected host. VPN tunnels, firewalls, packet filtering and the remote host can change the result. It should not be treated as a universal interface-MTU recommendation.
+The MTU result is an **estimate of the ICMP path MTU** to the selected host. It may be affected by routing, packet filtering, firewalls, and the remote host. It should not be treated as a universal network-interface MTU recommendation.
 
-HTTPS success confirms that the selected URL was reachable at the application layer. It does not measure download speed.
+A TCP port reported as closed or blocked can mean the service is not listening, a firewall filtered the connection, or the path is unavailable.
 
-## Why this project exists
+Traceroute is based on the Windows `tracert` utility and may contain missing hops because intermediate routers can suppress or rate-limit responses.
 
-Network problems are often reported with vague symptoms such as "the internet drops", "websites are slow", or "ping is unstable". NetDiag Toolkit aims to turn those symptoms into a small, repeatable evidence report that can be attached to an issue or support ticket.
+## Example report
+
+A normal run prints sections for:
+
+```text
+Ping
+DNS
+DNS server comparison
+HTTPS
+MTU
+Default gateway
+TCP ports
+Wi-Fi
+Traceroute
+Network state
+```
+
+## Project structure
+
+```text
+NetDiag-Toolkit/
+├── .github/
+│   ├── ISSUE_TEMPLATE/
+│   ├── pull_request_template.md
+│   └── workflows/
+├── tests/
+├── NetDiag.ps1
+├── README.md
+├── LICENSE
+├── CONTRIBUTING.md
+├── SECURITY.md
+├── CODE_OF_CONDUCT.md
+└── CHANGELOG.md
+```
 
 ## Roadmap
 
-- [ ] Add optional TCP connectivity tests
+- [x] Ping and packet-loss diagnostics
+- [x] DNS timing
+- [x] HTTPS reachability
+- [x] Path MTU estimation
+- [x] Default gateway test
+- [x] TCP connectivity test
+- [x] Traceroute
+- [x] Wi-Fi information
+- [x] DNS server comparison
+- [x] JSON export
+- [x] CSV export
+- [ ] Add optional latency/jitter summary across multiple targets
 - [ ] Add structured exit codes for automation
-- [ ] Add Pester test coverage
-- [ ] Add CSV export
-- [ ] Improve MTU boundary testing and diagnostics
+- [ ] Expand automated test coverage
+- [ ] Add richer machine-readable diagnostics
 
 ## Contributing
 
