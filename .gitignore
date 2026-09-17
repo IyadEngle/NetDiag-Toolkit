@@ -1,0 +1,12 @@
+# Generated diagnostic reports
+report.json
+*.log
+
+# PowerShell
+*.ps1xml
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
