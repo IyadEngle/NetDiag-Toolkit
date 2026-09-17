@@ -104,9 +104,19 @@ function Test-ND-Https {
 
 function Test-ND-MtuPayload {
     param([string]$ComputerName, [int]$Payload)
+
     try {
-        $reply = Test-Connection -ComputerName $ComputerName -Count 1 -BufferSize $Payload -DontFragment -ErrorAction Stop
-        return $true
+        $output = & ping.exe -4 -f -l $Payload -n 1 -w 1500 $ComputerName 2>&1 |
+            Out-String
+
+        # A successful reply contains the Windows ping reply marker and timing.
+        # "Packet needs to be fragmented" is the expected failure at/above the path MTU.
+        if ($output -match "(?i)Reply from .*: bytes=\d+.*time[=<]\s*\d+\s*ms" -and
+            $output -notmatch "(?i)fragment") {
+            return $true
+        }
+
+        return $false
     } catch {
         return $false
     }
@@ -114,26 +124,36 @@ function Test-ND-MtuPayload {
 
 function Test-ND-Mtu {
     param([string]$ComputerName, [int]$StartPayload, [int]$MaxPayload)
+
+    # First find a working payload using a coarse scan.
     $working = $null
     for ($size = $StartPayload; $size -le $MaxPayload; $size += 8) {
         if (Test-ND-MtuPayload -ComputerName $ComputerName -Payload $size) {
             $working = $size
+        } else {
+            # Once a payload fails, larger payloads should not be assumed to work.
+            break
         }
     }
-    # Binary-search the final boundary after the coarse scan.
-    if ($null -ne $working) {
+
+    # Refine the boundary between the last known-good and first known-bad payload.
+    if ($null -ne $working -and $working -lt $MaxPayload) {
         $low = $working
         $high = [math]::Min($working + 8, $MaxPayload)
+
         while ($low -lt $high) {
             $mid = [math]::Floor(($low + $high + 1) / 2)
+
             if (Test-ND-MtuPayload -ComputerName $ComputerName -Payload $mid) {
                 $low = $mid
             } else {
                 $high = $mid - 1
             }
         }
+
         $working = $low
     }
+
     [pscustomobject]@{
         Host = $ComputerName
         MaxIcmpPayload = $working
