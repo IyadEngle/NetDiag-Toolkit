@@ -31,7 +31,7 @@ def wifi_info() -> DiagnosticResult:
         )
         output = result.stdout
         duration_ms = (time.monotonic() - start) * 1000
-        details = {}
+        details: dict[str, str | int] = {}
 
         for pattern, key in [
             (r"^\s*SSID\s*:\s*(.+)$", "ssid"),

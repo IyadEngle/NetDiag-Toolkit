@@ -48,12 +48,14 @@ class _C:
     }
 
 
-class _NoColor:
+class _NoColor(_C):
     RESET = BOLD = DIM = RED = GREEN = YELLOW = BLUE = CYAN = ""
+    STATUS_COLORS = {status: "" for status in Status}
+    SEVERITY_COLORS = {severity: "" for severity in Severity}
 
 
 def format_console_report(report: ScanReport, use_color: bool = True) -> str:
-    C = _C if use_color else _NoColor()
+    C: _C = _C() if use_color else _NoColor()
     lines = []
     width = 64
 

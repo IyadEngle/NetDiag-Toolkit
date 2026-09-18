@@ -32,7 +32,7 @@ def _parse_windows_tracert(output: str) -> list[TracerouteHop]:
         hop_num = int(match.group(1))
         ip_match = re.search(r"(\d+\.\d+\.\d+\.\d+)", line)
         ip = ip_match.group(1) if ip_match else ""
-        latencies = [int(x) for x in re.findall(r"(?:[=<]\s*)?(\d+)\s*ms", line)]
+        latencies = [float(x) for x in re.findall(r"(?:[=<]\s*)?(\d+)\s*ms", line)]
         hostname = ""
         if ip:
             parts = line.split()

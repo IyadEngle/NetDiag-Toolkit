@@ -221,13 +221,15 @@ def _retrieve_certificate(host: str, port: int = 443, timeout: int = 10) -> tupl
             try:
                 cn = cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)
                 if cn:
-                    info.subject_cn = cn[0].value
+                    value = cn[0].value
+                    info.subject_cn = value.decode("utf-8", errors="replace") if isinstance(value, bytes) else value
             except Exception:
                 pass
             try:
                 icn = cert.issuer.get_attributes_for_oid(NameOID.COMMON_NAME)
                 if icn:
-                    info.issuer_cn = icn[0].value
+                    value = icn[0].value
+                    info.issuer_cn = value.decode("utf-8", errors="replace") if isinstance(value, bytes) else value
             except Exception:
                 pass
 

@@ -13,9 +13,19 @@ import ssl
 import urllib.error
 import urllib.request
 
+from typing import TypedDict
+
 from netdiag.utils.models import Confidence, SecurityFinding, SecurityStatus, Severity
 
-REQUIRED_HEADERS = {
+
+class HeaderInfo(TypedDict):
+    severity: Severity
+    title: str
+    description: str
+    recommendation: str
+
+
+REQUIRED_HEADERS: dict[str, HeaderInfo] = {
     "strict-transport-security": {
         "severity": Severity.INFO,
         "title": "Strict-Transport-Security Header Not Detected",

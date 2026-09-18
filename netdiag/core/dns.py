@@ -17,7 +17,7 @@ def resolve_hostname(target: str, dns_server: str | None = None) -> DiagnosticRe
     try:
         ips = socket.getaddrinfo(target, None, socket.AF_INET)
         duration_ms = (time.monotonic() - start) * 1000
-        unique_ips = sorted({addr[4][0] for addr in ips})
+        unique_ips = sorted({addr[4][0] for addr in ips if isinstance(addr[4][0], str)})
         return DiagnosticResult(
             test_name="dns_resolution", target=target, status=Status.PASS,
             evidence=f"Resolved to: {', '.join(unique_ips)}",

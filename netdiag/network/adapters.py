@@ -9,6 +9,7 @@ import platform
 import socket
 import subprocess
 import time
+from typing import Any
 
 from netdiag.utils.models import DiagnosticResult, Status
 
@@ -16,11 +17,11 @@ from netdiag.utils.models import DiagnosticResult, Status
 def _try_psutil_adapters() -> list[dict] | None:
     try:
         import psutil
-        adapters = []
+        adapters: list[dict[str, Any]] = []
         addrs = psutil.net_if_addrs()
         stats = psutil.net_if_stats()
         for name, addr_list in addrs.items():
-            adapter = {"name": name, "ipv4": [], "ipv6": [], "mac": "", "is_up": False, "speed": 0}
+            adapter: dict[str, Any] = {"name": name, "ipv4": [], "ipv6": [], "mac": "", "is_up": False, "speed": 0}
             for addr in addr_list:
                 if addr.family == socket.AddressFamily.AF_INET:
                     adapter["ipv4"].append(addr.address)
@@ -39,16 +40,16 @@ def _try_psutil_adapters() -> list[dict] | None:
         return None
 
 
-def _fallback_adapters() -> list[dict]:
+def _fallback_adapters() -> list[dict[str, Any]]:
     os_name = platform.system()
-    adapters = []
+    adapters: list[dict[str, Any]] = []
     if os_name == "Windows":
         try:
             result = subprocess.run(
                 ["ipconfig", "/all"], capture_output=True, text=True,
                 timeout=10, encoding="utf-8", errors="replace",
             )
-            current = None
+            current: dict[str, Any] | None = None
             for line in result.stdout.split("\n"):
                 line_s = line.strip()
                 if line_s and not line.startswith(" ") and ":" in line_s:
@@ -77,7 +78,7 @@ def _fallback_adapters() -> list[dict]:
                                 a["ipv4"].append(parts[3].split("/")[0])
                             break
                     if not found:
-                        adapter = {"name": iface, "ipv4": [], "ipv6": [], "mac": "", "is_up": "UP" in line, "speed": 0}
+                        adapter: dict[str, Any] = {"name": iface, "ipv4": [], "ipv6": [], "mac": "", "is_up": "UP" in line, "speed": 0}
                         if "inet " in line and len(parts) > 3:
                             adapter["ipv4"].append(parts[3].split("/")[0])
                         adapters.append(adapter)
