@@ -8,7 +8,7 @@ from __future__ import annotations
 import html as html_module
 from pathlib import Path
 
-from netdiag.utils.models import ScanReport, SecurityStatus, Severity, Status
+from netdiag.utils.models import ScanReport, SecurityStatus, Status
 
 
 def export_html(report: ScanReport, filepath: str | None = None) -> str:
