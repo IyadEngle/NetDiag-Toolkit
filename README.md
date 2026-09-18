@@ -147,6 +147,12 @@ GUI on Windows/Linux with the optional GUI dependency:
 netdiag-gui
 ```
 
+Windows PowerShell legacy workflow:
+
+```powershell
+.\NetDiag.ps1
+```
+
 ---
 
 # Command Reference
@@ -434,16 +440,87 @@ NetDiag-Toolkit/
 
 ---
 
-# Legacy PowerShell Implementation
+## Legacy PowerShell implementation
 
-The original PowerShell implementation remains available as:
+The original Windows PowerShell implementation is still included for users who prefer the classic command-line workflow:
 
 ```text
 NetDiag.ps1
 ```
 
-The Python implementation is the current project direction.
+It runs the original diagnostics directly from PowerShell and remains available alongside the Python CLI and GUI. The legacy script covers connectivity/latency, DNS, HTTPS, path MTU, default gateway, TCP ports, traceroute, Wi-Fi, adapter/IP state, and JSON/CSV reporting.
 
+### Run the legacy script
+
+From the project folder:
+
+```powershell
+.\NetDiag.ps1
+```
+
+### Legacy examples
+
+Run with the default targets/settings:
+
+```powershell
+.\NetDiag.ps1
+```
+
+Set the ping target, DNS name, and HTTPS URL:
+
+```powershell
+.\NetDiag.ps1 `
+  -Target 1.1.1.1 `
+  -DnsName cloudflare.com `
+  -HttpsUrl https://www.cloudflare.com/
+```
+
+Test selected TCP ports and save JSON/CSV reports:
+
+```powershell
+.\NetDiag.ps1 `
+  -TcpHost 1.1.1.1 `
+  -TcpPorts 80,443,53 `
+  -CsvPath .\report.csv `
+  -JsonPath .\report.json
+```
+
+Compare specific DNS servers:
+
+```powershell
+.\NetDiag.ps1 `
+  -DnsServers 1.1.1.1,8.8.8.8 `
+  -DnsQuery cloudflare.com
+```
+
+### Legacy parameters
+
+| Parameter | Default | Purpose |
+|---|---|---|
+| `-Target` | `1.1.1.1` | Main ping target |
+| `-DnsName` | `cloudflare.com` | DNS lookup name |
+| `-HttpsUrl` | `https://www.cloudflare.com/` | HTTPS endpoint |
+| `-MtuHost` | `1.1.1.1` | Host used for Path MTU testing |
+| `-TcpHost` | `1.1.1.1` | Host used for TCP connectivity tests |
+| `-TcpPorts` | `80,443` | TCP ports to test |
+| `-TraceHost` | `1.1.1.1` | Host used for traceroute |
+| `-TraceMaxHops` | `12` | Maximum traceroute hops |
+| `-PingCount` | `5` | Number of ICMP ping requests |
+| `-TcpTimeoutMs` | `2000` | TCP connection timeout in milliseconds |
+| `-MtuStartPayload` | `1200` | Starting ICMP payload size |
+| `-MtuMaxPayload` | `1472` | Maximum ICMP payload size |
+| `-DnsServers` | `1.1.1.1,8.8.8.8` | DNS servers to compare |
+| `-DnsQuery` | `cloudflare.com` | Name queried against selected DNS servers |
+| `-JsonPath` | unset | Save the complete report as JSON |
+| `-CsvPath` | unset | Save a flattened report as CSV |
+
+### Which interface should I use?
+
+- **`netdiag`** — current Python CLI for scripting, automation, reporting, and the security audit.
+- **`netdiag-gui`** — current native desktop GUI for interactive use.
+- **`NetDiag.ps1`** — original Windows PowerShell workflow for users who prefer the legacy commands and parameters.
+
+The PowerShell script is Windows-only and does not require the optional PySide6 GUI dependency.
 ---
 
 # Limitations
