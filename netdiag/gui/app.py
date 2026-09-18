@@ -49,7 +49,7 @@ def main(argv: list[str] | None = None) -> int:
 
     window = MainWindow()
     window.show()
-    return app.exec()
+    return int(app.exec())
 
 
 if __name__ == "__main__":
