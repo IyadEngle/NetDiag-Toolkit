@@ -1,34 +1,29 @@
 # Changelog
 
-## 0.2.0 - 2026-09-17
+Copyright (c) 2026 Iyad Engle
 
-### Added
-- Default gateway discovery and ping test
-- TCP port connectivity diagnostics
-- Windows traceroute support
-- Wi-Fi information discovery
-- Direct comparison of selected DNS servers
-- CSV report export
-- Expanded report output and command-line options
-
-### Improved
-- Path MTU probing now relies on the native Windows `ping.exe` exit status, making the result less dependent on localized command output.
-- Documentation expanded with examples and result interpretation guidance.
-
-## 0.1.1 - 2026-09-17
+## [0.3.0] - 2026-01-15
 
 ### Fixed
-- Improved path MTU detection on Windows.
-- Switched MTU probing to the native Windows ping utility.
-- Added explicit Don't Fragment handling.
-- Improved MTU boundary detection.
+- Windows tracert latency parser now correctly matches "1 ms" format (previously only matched "time<1ms" / "time=1ms")
+- pyproject.toml classifier updated from Alpha to Beta (consistent with README)
 
-## 0.1.0 - 2026-09-17
+### Changed
+- README network traffic wording clarified: no telemetry or third-party data collection; tool does make network requests to user-specified targets as part of diagnostics
+- SecurityStatus.OBSERVATION added for informational configuration observations
+- Missing HTTP security headers → OBSERVATION (not FAIL)
+- DNSSEC not detected → OBSERVATION (not FAIL)
+- TCP open ports → OBSERVATION (not FAIL)
+- ALL SSL errors during TLS protocol testing → INCONCLUSIVE (not NOT_SUPPORTED)
+- Certificate self-signed status cryptographically verified
+- Connection failures in security checks → SKIP (not FAIL)
+- Gateway integration test: tautological assertion replaced with IP validation
+- dnspython added as required dependency (DNSSEC/open resolver work on Windows without WSL)
 
-- Initial public release
-- Added latency and packet-loss diagnostics
-- Added DNS timing
-- Added HTTPS reachability timing
-- Added ICMP path-MTU estimation
-- Added active adapter/IP configuration summary
-- Added JSON report export
+### Added
+- SecurityStatus enum: PASS, FAIL, OBSERVATION, SKIP, ERROR, INCONCLUSIVE
+- ScanReport security_failures counts only FAIL status
+- ScanReport security_observations, security_inconclusive, security_skipped, security_passed
+- Two-phase TLS protocol detection (probe → test deprecated versions)
+- Cryptographic self-signed certificate verification using cryptography library
+- CertificateInfo dataclass with is_self_signed (crypto) and is_self_issued (DN match)

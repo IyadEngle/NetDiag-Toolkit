@@ -1,145 +1,65 @@
-# NetDiag Toolkit
+# 🛡️ NetDiag-Toolkit v0.3.0
 
-Lightweight, transparent Windows network diagnostics for troubleshooting connectivity, latency, DNS, HTTPS, path MTU and local network configuration.
+**Advanced Network Diagnostics & Security Audit Toolkit**
 
-> **Current release:** `v0.2.0`
+Copyright (c) 2026 Iyad Engle
 
-## What it does
+![Version](https://img.shields.io/badge/version-0.3.0--beta-orange)
+![Python](https://img.shields.io/badge/python-3.10+-blue)
+![Platform](https://img.shields.io/badge/platform-Windows%2010%2F%2011-lightgrey)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-NetDiag Toolkit runs a repeatable local diagnostic report:
+> ⚠️ **Beta release.** Parity with the PowerShell version (v0.2.x) has not been fully verified on all Windows configurations.
 
-- ICMP latency and packet loss
-- DNS resolution timing
-- Direct DNS-server comparison
-- HTTPS reachability and response timing
-- Path MTU estimation using ICMP + Don't Fragment
-- Default gateway discovery and gateway ping
-- TCP connectivity checks for selected ports
-- Traceroute using the native Windows `tracert`
-- Wi-Fi state, signal and link information when available
-- Active adapter and IP configuration summary
-- Optional JSON and CSV report export
+## Purpose
 
-The toolkit is intentionally transport-agnostic and does not silently change network settings or upload diagnostic data.
+Read-only network diagnostics and basic security configuration audits. Does not modify system configuration or perform destructive operations.
 
-## Requirements
+The tool makes network requests to user-specified targets as part of diagnostics (ICMP ping, TCP connect, DNS queries, HTTPS requests). It does **not** include telemetry, analytics, or centralized third-party data collection. All results remain local.
 
-- Windows 10/11
-- Windows PowerShell 5.1+ or PowerShell 7+
-- Administrator rights are **not** normally required
-- Some tests depend on local firewall policy and the destination allowing ICMP/TCP
+## Features
 
-## Quick start
+| Test | Description | Platform |
+|------|-------------|----------|
+| ICMP Ping | Latency, packet loss | Windows ✅, Linux ✅ |
+| DNS Resolution | Hostname → IP | Cross-platform ✅ |
+| DNS Comparison | Multiple servers | Windows ✅, Linux ✅ |
+| HTTPS | TLS connectivity | Cross-platform ✅ |
+| TCP Connectivity | Specific ports | Cross-platform ✅ |
+| Path MTU | DF-bit binary search | Windows ✅, Linux implemented |
+| Default Gateway | Detect & ping | Windows ✅, Linux ✅ |
+| Traceroute | Hop-by-hop | Windows ✅, Linux ✅ |
+| Adapter Info | Interfaces, IPs | Windows ✅, Linux implemented |
+| Wi-Fi Info | SSID, signal | Windows only |
 
-Open PowerShell in the project folder:
+## Security Audit
 
-```powershell
-Set-ExecutionPolicy -Scope Process Bypass
-.\NetDiag.ps1
-```
+| Check | Confidence | Severity Range |
+|-------|------------|---------------|
+| TLS Certificate Expiry | CONFIRMED | HIGH (expired), MEDIUM (<14 days) |
+| TLS Protocol Versions | CONFIRMED/INCONCLUSIVE | HIGH/MEDIUM |
+| Certificate Hostname | CONFIRMED | HIGH/MEDIUM |
+| HTTP Security Headers | CONFIRMED | INFO/LOW (observations) |
+| DNSSEC Status | CONFIRMED/INCONCLUSIVE | INFO (observation) |
+| Open DNS Resolver | CONFIRMED | MEDIUM |
+| TCP Service Exposure | CONFIRMED | INFO (observation) |
 
-### Customize targets
+**Open ports are observations, not vulnerabilities. Header absence is an observation, not a vulnerability.**
 
-```powershell
-.\NetDiag.ps1 `
-  -Target 1.1.1.1 `
-  -DnsName cloudflare.com `
-  -HttpsUrl https://www.cloudflare.com/ `
-  -MtuHost 1.1.1.1 `
-  -TraceHost 1.1.1.1
-```
+## Security Status Semantics
 
-### Test specific TCP ports
+| Status | Meaning |
+|--------|---------|
+| FAIL | Confirmed security condition (e.g., expired certificate, deprecated TLS negotiated) |
+| OBSERVATION | Informational configuration observation (e.g., missing header, open port) |
+| PASS | Check completed, no issue found |
+| SKIP | Not runnable or not applicable |
+| ERROR | Unexpected error |
+| INCONCLUSIVE | Check ran but evidence is insufficient |
 
-```powershell
-.\NetDiag.ps1 -TcpHost 1.1.1.1 -TcpPorts 53,80,443
-```
+## Installation
 
-### Compare DNS servers
-
-```powershell
-.\NetDiag.ps1 `
-  -DnsServers 1.1.1.1,8.8.8.8 `
-  -DnsQuery cloudflare.com
-```
-
-### Export reports
-
-```powershell
-.\NetDiag.ps1 -JsonPath .\report.json -CsvPath .\report.csv
-```
-
-## Interpreting results
-
-A failed ICMP ping does not automatically mean the internet is down because some hosts and firewalls block ICMP.
-
-The MTU result is an **estimate of the ICMP path MTU** to the selected host. It may be affected by routing, packet filtering, firewalls, and the remote host. It should not be treated as a universal network-interface MTU recommendation.
-
-A TCP port reported as closed or blocked can mean the service is not listening, a firewall filtered the connection, or the path is unavailable.
-
-Traceroute is based on the Windows `tracert` utility and may contain missing hops because intermediate routers can suppress or rate-limit responses.
-
-## Example report
-
-A normal run prints sections for:
-
-```text
-Ping
-DNS
-DNS server comparison
-HTTPS
-MTU
-Default gateway
-TCP ports
-Wi-Fi
-Traceroute
-Network state
-```
-
-## Project structure
-
-```text
-NetDiag-Toolkit/
-├── .github/
-│   ├── ISSUE_TEMPLATE/
-│   ├── pull_request_template.md
-│   └── workflows/
-├── tests/
-├── NetDiag.ps1
-├── README.md
-├── LICENSE
-├── CONTRIBUTING.md
-├── SECURITY.md
-├── CODE_OF_CONDUCT.md
-└── CHANGELOG.md
-```
-
-## Roadmap
-
-- [x] Ping and packet-loss diagnostics
-- [x] DNS timing
-- [x] HTTPS reachability
-- [x] Path MTU estimation
-- [x] Default gateway test
-- [x] TCP connectivity test
-- [x] Traceroute
-- [x] Wi-Fi information
-- [x] DNS server comparison
-- [x] JSON export
-- [x] CSV export
-- [ ] Add optional latency/jitter summary across multiple targets
-- [ ] Add structured exit codes for automation
-- [ ] Expand automated test coverage
-- [ ] Add richer machine-readable diagnostics
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Security
-
-Please see [SECURITY.md](SECURITY.md).
-
-## License
-
-MIT License. See [LICENSE](LICENSE).
+```bash
+git clone https://github.com/IyadEngle/NetDiag-Toolkit.git
+cd NetDiag-Toolkit
+pip install -e ".[dev]"
