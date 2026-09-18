@@ -9,6 +9,7 @@ import time
 
 import click
 
+from netdiag import __version__
 from netdiag.utils.logging import setup_logging
 from netdiag.utils.models import ScanReport
 
@@ -99,7 +100,7 @@ def _output_report(report: ScanReport, reporter: str, output: str | None):
 
 
 @click.group()
-@click.version_option(version="0.3.0", prog_name="NetDiag-Toolkit")
+@click.version_option(version=__version__, prog_name="NetDiag-Toolkit")
 def cli():
     """NetDiag-Toolkit: Advanced Network Diagnostics & Security Audit. Copyright (c) 2026 Iyad Engle."""
 

@@ -14,6 +14,7 @@ import urllib.error
 import urllib.request
 from typing import TypedDict
 
+from netdiag import __version__
 from netdiag.utils.models import Confidence, SecurityFinding, SecurityStatus, Severity
 
 
@@ -65,7 +66,7 @@ def check_http_security_headers(
 
     try:
         req = urllib.request.Request(url, method="GET")
-        req.add_header("User-Agent", "NetDiag-Toolkit/0.3.0")
+        req.add_header("User-Agent", f"NetDiag-Toolkit/{__version__}")
         context = ssl.create_default_context() if use_https else None
 
         with urllib.request.urlopen(req, timeout=timeout, context=context) as response:

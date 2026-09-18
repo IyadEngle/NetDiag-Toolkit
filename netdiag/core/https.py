@@ -10,6 +10,7 @@ import time
 import urllib.error
 import urllib.request
 
+from netdiag import __version__
 from netdiag.utils.models import DiagnosticResult, Status
 
 
@@ -19,7 +20,7 @@ def https_connectivity(target: str, port: int = 443, timeout_seconds: int = 10) 
     try:
         context = ssl.create_default_context()
         req = urllib.request.Request(url, method="HEAD")
-        req.add_header("User-Agent", "NetDiag-Toolkit/0.3.0")
+        req.add_header("User-Agent", f"NetDiag-Toolkit/{__version__}")
         with urllib.request.urlopen(req, timeout=timeout_seconds, context=context) as response:
             return DiagnosticResult(
                 test_name="https_connectivity", target=target, status=Status.PASS,

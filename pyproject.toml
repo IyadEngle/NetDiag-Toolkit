@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "netdiag-toolkit"
-version = "0.3.0"
+version = "0.4.0b0"
 description = "Advanced Network Diagnostics & Security Audit Toolkit"
 readme = "README.md"
 license = { text = "MIT" }
@@ -12,7 +12,7 @@ requires-python = ">=3.10"
 authors = [
     { name = "Iyad Engle" },
 ]
-keywords = ["network", "diagnostics", "security", "tls", "dns", "ping"]
+keywords = ["network", "diagnostics", "security", "tls", "dns", "ping", "gui"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: System Administrators",
@@ -35,6 +35,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+gui = [
+    "PySide6>=6.5",
+]
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
@@ -42,8 +45,12 @@ dev = [
     "ruff>=0.1",
 ]
 
+[tool.setuptools.package-data]
+netdiag = ["gui/resources/*.ico", "gui/resources/*.png"]
+
 [project.scripts]
 netdiag = "netdiag.cli.main:main"
+netdiag-gui = "netdiag.gui.app:main"
 
 [project.urls]
 Homepage = "https://github.com/IyadEngle/NetDiag-Toolkit"
@@ -67,4 +74,5 @@ disallow_untyped_defs = false
 testpaths = ["tests"]
 markers = [
     "integration: tests that require network access",
+    "gui: tests that require PySide6 (auto-skipped when absent)",
 ]

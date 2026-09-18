@@ -10,6 +10,8 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
+from netdiag import __version__
+
 
 class Status(str, Enum):
     """Status of a diagnostic test."""
@@ -110,7 +112,7 @@ class ScanReport:
     """Container for a complete scan run."""
     target: str
     started_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    tool_version: str = "0.3.0"
+    tool_version: str = field(default_factory=lambda: __version__)
     results: list[DiagnosticResult] = field(default_factory=list)
     findings: list[SecurityFinding] = field(default_factory=list)
 
