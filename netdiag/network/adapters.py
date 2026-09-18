@@ -9,12 +9,11 @@ import platform
 import socket
 import subprocess
 import time
-from typing import Optional
 
 from netdiag.utils.models import DiagnosticResult, Status
 
 
-def _try_psutil_adapters() -> Optional[list[dict]]:
+def _try_psutil_adapters() -> list[dict] | None:
     try:
         import psutil
         adapters = []

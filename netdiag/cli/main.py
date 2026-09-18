@@ -6,12 +6,10 @@
 from __future__ import annotations
 
 import time
-from typing import Optional
-
 import click
 
-from netdiag.utils.models import ScanReport
 from netdiag.utils.logging import setup_logging
+from netdiag.utils.models import ScanReport
 
 logger = setup_logging()
 
@@ -51,10 +49,14 @@ def _run_diagnostics(target: str, full: bool = False, include_wifi: bool = False
 
 
 def _run_security_audit(target: str) -> ScanReport:
-    from netdiag.security.tls import check_certificate_expiry, check_tls_protocol_versions, check_certificate_hostname
-    from netdiag.security.http_security import check_http_security_headers
     from netdiag.security.dns_security import check_dnssec, check_open_resolver
     from netdiag.security.exposure import check_tcp_exposure
+    from netdiag.security.http_security import check_http_security_headers
+    from netdiag.security.tls import (
+        check_certificate_expiry,
+        check_certificate_hostname,
+        check_tls_protocol_versions,
+    )
 
     report = ScanReport(target=target)
     click.echo(f"Running security audit against {target}...", err=True)
@@ -70,7 +72,7 @@ def _run_security_audit(target: str) -> ScanReport:
     return report
 
 
-def _output_report(report: ScanReport, reporter: str, output: Optional[str]):
+def _output_report(report: ScanReport, reporter: str, output: str | None):
     if reporter == "console":
         from netdiag.reports.console import format_console_report
         click.echo(format_console_report(report))
@@ -140,7 +142,7 @@ def full(target, reporter, output):
 @click.option("--compare", is_flag=True)
 def dns(target, compare):
     """DNS resolution and comparison diagnostics."""
-    from netdiag.core.dns import resolve_hostname, compare_dns_servers
+    from netdiag.core.dns import compare_dns_servers, resolve_hostname
     report = ScanReport(target=target)
     if compare:
         report.results = compare_dns_servers(target)
@@ -210,9 +212,9 @@ def scan(target, ports):
 @cli.command()
 def network():
     """Show local network information (adapters, Wi-Fi, gateway)."""
+    from netdiag.core.gateway import gateway_diagnostics
     from netdiag.network.adapters import adapter_info
     from netdiag.network.wifi import wifi_info
-    from netdiag.core.gateway import gateway_diagnostics
 
     report = ScanReport(target="localhost")
     report.results.append(adapter_info())

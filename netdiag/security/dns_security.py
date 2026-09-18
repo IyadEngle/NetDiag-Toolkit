@@ -8,23 +8,22 @@ DNSSEC not detected → OBSERVATION. Open resolver → FAIL (security condition)
 
 from __future__ import annotations
 
-import enum
 import logging
 import subprocess
 
-from netdiag.utils.models import SecurityFinding, SecurityStatus, Severity, Confidence
+from netdiag.utils.models import Confidence, SecurityFinding, SecurityStatus, Severity
 
 logger = logging.getLogger("netdiag.security.dns_security")
 
 
 def _dnssec_check_dnspython(target: str, timeout: int = 10) -> tuple[str, str]:
-    import dns.message
-    import dns.query
-    import dns.rdatatype
-    import dns.rdataclass
-    import dns.rcode
-    import dns.name
     import dns.exception
+    import dns.message
+    import dns.name
+    import dns.query
+    import dns.rcode
+    import dns.rdataclass
+    import dns.rdatatype
 
     try:
         query = dns.message.make_query(target, dns.rdatatype.DNSKEY, dns.rdataclass.IN, want_dnssec=True)
@@ -122,8 +121,8 @@ def check_dnssec(target: str, timeout: int = 10) -> list[SecurityFinding]:
 
 
 def _open_resolver_check_dnspython(target: str, timeout: int = 5) -> tuple:
-    import dns.resolver
     import dns.exception
+    import dns.resolver
 
     try:
         resolver = dns.resolver.Resolver(configure=False)

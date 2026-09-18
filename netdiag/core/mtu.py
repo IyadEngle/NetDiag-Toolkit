@@ -8,7 +8,6 @@ from __future__ import annotations
 import platform
 import subprocess
 import time
-from typing import Optional
 
 from netdiag.utils.models import DiagnosticResult, Status
 
@@ -40,7 +39,7 @@ def estimate_path_mtu(
             return False
 
     low, high = min_size, max_size
-    best_mtu: Optional[int] = None
+    best_mtu: int | None = None
 
     while low <= high:
         mid = (low + high) // 2

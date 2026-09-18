@@ -10,7 +10,6 @@ import ipaddress
 import socket
 import subprocess
 import time
-from typing import Optional
 
 from netdiag.utils.models import DiagnosticResult, Status
 
@@ -23,7 +22,7 @@ SERVICE_NAMES = {
 
 
 def port_scan(
-    target: str, ports: Optional[list[int]] = None,
+    target: str, ports: list[int] | None = None,
     timeout_seconds: float = 2.0, max_concurrent: int = 20,
 ) -> DiagnosticResult:
     start = time.monotonic()
@@ -87,7 +86,7 @@ def host_discovery(
 
     all_ips = [str(ip) for ip in network.hosts()]
 
-    def _check_host(ip: str) -> Optional[str]:
+    def _check_host(ip: str) -> str | None:
         try:
             if os_name == "Windows":
                 cmd = ["ping", "-n", "1", "-w", str(timeout_seconds * 1000), ip]

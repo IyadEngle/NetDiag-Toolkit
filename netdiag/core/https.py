@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import ssl
 import time
-import urllib.request
 import urllib.error
+import urllib.request
 
 from netdiag.utils.models import DiagnosticResult, Status
 

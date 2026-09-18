@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from netdiag.utils.models import ScanReport, Status, Severity, SecurityStatus
+from netdiag.utils.models import ScanReport, SecurityStatus, Severity, Status
 
 
 class _C:

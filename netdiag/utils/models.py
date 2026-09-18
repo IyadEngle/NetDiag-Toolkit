@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict
+from typing import Any
 
 
 class Status(str, Enum):
@@ -63,9 +63,9 @@ class DiagnosticResult:
     duration_ms: float
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     error: str = ""
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "test_name": self.test_name,
             "target": self.target,
@@ -91,7 +91,7 @@ class SecurityFinding:
     confidence: Confidence
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "test_name": self.test_name,
             "status": self.status.value,
@@ -154,7 +154,7 @@ class ScanReport:
     def total_findings(self) -> int:
         return len(self.findings)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "tool": "NetDiag-Toolkit",
             "version": self.tool_version,

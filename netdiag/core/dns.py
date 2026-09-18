@@ -8,12 +8,11 @@ from __future__ import annotations
 import socket
 import subprocess
 import time
-from typing import Optional
 
 from netdiag.utils.models import DiagnosticResult, Status
 
 
-def resolve_hostname(target: str, dns_server: Optional[str] = None) -> DiagnosticResult:
+def resolve_hostname(target: str, dns_server: str | None = None) -> DiagnosticResult:
     start = time.monotonic()
     try:
         ips = socket.getaddrinfo(target, None, socket.AF_INET)

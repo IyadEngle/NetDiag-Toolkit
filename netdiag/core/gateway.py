@@ -9,12 +9,11 @@ import platform
 import re
 import subprocess
 import time
-from typing import Optional
 
 from netdiag.utils.models import DiagnosticResult, Status
 
 
-def get_default_gateway() -> Optional[str]:
+def get_default_gateway() -> str | None:
     os_name = platform.system()
     try:
         if os_name == "Windows":

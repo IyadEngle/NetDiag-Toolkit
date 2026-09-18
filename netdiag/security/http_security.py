@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import re
 import ssl
-import urllib.request
 import urllib.error
+import urllib.request
 
-from netdiag.utils.models import SecurityFinding, SecurityStatus, Severity, Confidence
+from netdiag.utils.models import Confidence, SecurityFinding, SecurityStatus, Severity
 
 REQUIRED_HEADERS = {
     "strict-transport-security": {

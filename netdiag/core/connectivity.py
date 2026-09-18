@@ -10,7 +10,6 @@ import re
 import subprocess
 import time
 from dataclasses import dataclass
-from typing import Optional
 
 from netdiag.utils.models import DiagnosticResult, Status
 
@@ -21,9 +20,9 @@ class PingResult:
     received: int = 0
     lost: int = 0
     loss_percent: float = 0.0
-    min_ms: Optional[float] = None
-    max_ms: Optional[float] = None
-    avg_ms: Optional[float] = None
+    min_ms: float | None = None
+    max_ms: float | None = None
+    avg_ms: float | None = None
     raw_output: str = ""
 
 

@@ -10,13 +10,12 @@ cryptographically. Connection failures produce SKIP/ERROR, never FAIL.
 from __future__ import annotations
 
 import enum
-import ssl
 import socket
+import ssl
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Optional
 
-from netdiag.utils.models import SecurityFinding, SecurityStatus, Severity, Confidence
+from netdiag.utils.models import Confidence, SecurityFinding, SecurityStatus, Severity
 
 
 class TLSProtocolStatus(str, enum.Enum):
@@ -26,7 +25,7 @@ class TLSProtocolStatus(str, enum.Enum):
     UNAVAILABLE = "UNAVAILABLE"
 
 
-def _get_tls_version_constant(version_name: str) -> Optional[ssl.TLSVersion]:
+def _get_tls_version_constant(version_name: str) -> ssl.TLSVersion | None:
     return {
         "SSLv3": getattr(ssl.TLSVersion, "SSLv3", None),
         "TLSv1.0": getattr(ssl.TLSVersion, "TLSv1", None),
@@ -87,7 +86,7 @@ def _test_tls_version(
             sock.close()
             return TLSProtocolStatus.INCONCLUSIVE, \
                 f"SSL error during {version_name} negotiation: {e}. Cannot determine cause."
-    except (ConnectionRefusedError, ConnectionResetError, socket.timeout, OSError) as e:
+    except (TimeoutError, ConnectionRefusedError, ConnectionResetError, OSError) as e:
         return TLSProtocolStatus.UNAVAILABLE, f"Network error: {e}"
 
 
@@ -174,11 +173,11 @@ class CertificateInfo:
     serial_hex: str = ""
 
 
-def _cryptographic_self_signed_check(cert) -> Optional[bool]:
-    from cryptography.hazmat.primitives.asymmetric import rsa, ec, ed25519
-    from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
-    from cryptography.hazmat.primitives.asymmetric.ec import ECDSA
+def _cryptographic_self_signed_check(cert) -> bool | None:
     from cryptography.exceptions import InvalidSignature
+    from cryptography.hazmat.primitives.asymmetric import ec, ed25519, rsa
+    from cryptography.hazmat.primitives.asymmetric.ec import ECDSA
+    from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 
     public_key = cert.public_key()
     try:
@@ -263,7 +262,7 @@ def _retrieve_certificate(host: str, port: int = 443, timeout: int = 10) -> tupl
         except Exception as e:
             return None, negotiated, "PARSE_FAILED", f"Failed to parse certificate: {e}"
 
-    except (ConnectionRefusedError, ConnectionResetError, socket.timeout, OSError) as e:
+    except (TimeoutError, ConnectionRefusedError, ConnectionResetError, OSError) as e:
         return None, None, "CONNECTION_FAILED", f"Could not connect to {host}:{port}: {e}"
     except Exception as e:
         return None, None, "CONNECTION_FAILED", f"Unexpected error: {e}"
@@ -391,7 +390,7 @@ def check_certificate_hostname(host: str, port: int = 443, timeout: int = 10) ->
                 recommendation="Review the TLS certificate configuration.",
                 confidence=Confidence.CONFIRMED,
             ))
-    except (ConnectionRefusedError, ConnectionResetError, socket.timeout, OSError) as e:
+    except (TimeoutError, ConnectionRefusedError, ConnectionResetError, OSError) as e:
         findings.append(SecurityFinding(
             test_name="tls_cert_hostname", status=SecurityStatus.SKIP, severity=Severity.INFO,
             title="TLS Certificate Hostname Check: Connection Failed",

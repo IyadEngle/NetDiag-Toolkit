@@ -10,9 +10,8 @@ from __future__ import annotations
 
 import concurrent.futures
 import socket
-from typing import Optional
 
-from netdiag.utils.models import SecurityFinding, SecurityStatus, Severity, Confidence
+from netdiag.utils.models import Confidence, SecurityFinding, SecurityStatus, Severity
 
 SERVICE_NAMES = {
     21: "FTP", 22: "SSH", 23: "Telnet", 25: "SMTP", 53: "DNS",
@@ -24,14 +23,14 @@ SERVICE_NAMES = {
 
 
 def check_tcp_exposure(
-    target: str, ports: Optional[list[int]] = None,
+    target: str, ports: list[int] | None = None,
     timeout_seconds: float = 3.0, max_concurrent: int = 10,
 ) -> list[SecurityFinding]:
     findings = []
     if ports is None:
         ports = sorted(SERVICE_NAMES.keys())
 
-    def _check_port(port: int) -> Optional[int]:
+    def _check_port(port: int) -> int | None:
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(timeout_seconds)

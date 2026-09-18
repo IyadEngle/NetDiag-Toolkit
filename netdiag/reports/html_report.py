@@ -8,7 +8,7 @@ from __future__ import annotations
 import html as html_module
 from pathlib import Path
 
-from netdiag.utils.models import ScanReport, Status, Severity, SecurityStatus
+from netdiag.utils.models import ScanReport, SecurityStatus, Severity, Status
 
 
 def export_html(report: ScanReport, filepath: str | None = None) -> str:
@@ -17,10 +17,6 @@ def export_html(report: ScanReport, filepath: str | None = None) -> str:
     status_colors = {s.value: c for s, c in [
         (Status.PASS, "#3fb950"), (Status.FAIL, "#f85149"), (Status.WARN, "#d29922"),
         (Status.SKIP, "#8b949e"), (Status.ERROR, "#f85149"),
-    ]}
-    severity_colors = {s.value: c for s, c in [
-        (Severity.INFO, "#58a6ff"), (Severity.LOW, "#3fb950"), (Severity.MEDIUM, "#d29922"),
-        (Severity.HIGH, "#f85149"), (Severity.CRITICAL, "#f85149"),
     ]}
     security_status_colors = {s.value: c for s, c in [
         (SecurityStatus.FAIL, "#f85149"), (SecurityStatus.OBSERVATION, "#58a6ff"),
