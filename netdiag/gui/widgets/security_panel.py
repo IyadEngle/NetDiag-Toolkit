@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -41,7 +40,9 @@ class _FindingCard(QFrame):
         header.addWidget(badge)
         title = QLabel(finding.title)
         title.setWordWrap(True)
-        f = title.font(); f.setBold(True); title.setFont(f)
+        f = title.font()
+        f.setBold(True)
+        title.setFont(f)
         header.addWidget(title, stretch=1)
         layout.addLayout(header)
 

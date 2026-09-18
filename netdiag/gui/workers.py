@@ -14,7 +14,7 @@ stable diagnostics, which is out of scope.
 from __future__ import annotations
 
 import threading
-from typing import Callable
+from collections.abc import Callable
 
 from PySide6.QtCore import QThread, Signal
 

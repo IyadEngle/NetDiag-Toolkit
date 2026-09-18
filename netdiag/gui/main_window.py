@@ -7,15 +7,15 @@ from __future__ import annotations
 
 import logging
 
-from PySide6.QtCore import QObject, Qt, Signal
+from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import (
     QApplication,
+    QComboBox,
     QDialog,
     QDialogButtonBox,
     QFileDialog,
     QFormLayout,
-    QComboBox,
     QFrame,
     QHBoxLayout,
     QLabel,
