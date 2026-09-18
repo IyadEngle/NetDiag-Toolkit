@@ -10,10 +10,9 @@ from __future__ import annotations
 
 import re
 import ssl
+from typing import TypedDict
 import urllib.error
 import urllib.request
-
-from typing import TypedDict
 
 from netdiag.utils.models import Confidence, SecurityFinding, SecurityStatus, Severity
 
