@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Iyad Engle. All rights reserved.
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from netdiag.security.exposure import check_tcp_exposure
 from netdiag.utils.models import SecurityStatus, Severity

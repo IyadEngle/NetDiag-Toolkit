@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Iyad Engle. All rights reserved.
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from netdiag.security.http_security import check_http_security_headers
 from netdiag.utils.models import SecurityStatus, Severity

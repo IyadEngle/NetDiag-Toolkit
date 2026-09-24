@@ -91,7 +91,7 @@ class SecurityPanel(QWidget):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll.setWidget(self._container)
         layout.addWidget(scroll, stretch=1)
 
@@ -113,7 +113,7 @@ class SecurityPanel(QWidget):
         self._findings = []
         while self._list_layout.count() > 1:
             item = self._list_layout.takeAt(0)
-            widget = item.widget()
+            widget = item.widget() if item is not None else None
             if widget:
                 widget.deleteLater()
         self.count_label.setText("No security results yet.")

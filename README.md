@@ -294,6 +294,28 @@ netdiag report --target example.com --reporter csv --output report.csv
 netdiag report --target example.com --reporter html --output report.html
 ```
 
+## Targets
+
+Every `--target` is validated the same way as in the GUI: an IPv4 address or an
+RFC 1123 hostname, without URL scheme, path, whitespace, or a leading `-`.
+Invalid targets are rejected with a usage error (exit code 2).
+
+## Exit codes
+
+Exit codes are bit flags, so scripts and CI jobs can test each condition:
+
+| Code | Meaning |
+|---|---|
+| `0` | No diagnostic failures and no security `FAIL` findings |
+| `1` | One or more diagnostics returned `FAIL` or `ERROR` |
+| `2` | Usage error (invalid or missing options) |
+| `4` | One or more security findings with status `FAIL` |
+| `5` | Both `1` and `4` |
+
+`WARN`, `SKIP`, `OBSERVATION` and `INCONCLUSIVE` results do not change the exit code.
+Diagnostics report `WARN` for partial packet loss and for a traceroute that does not
+reach its destination.
+
 ---
 
 # Supported Platforms
@@ -378,13 +400,13 @@ pytest tests/ -m "not integration and not gui" -v
 Run all non-integration tests with PySide6 installed:
 
 ```bash
-pytest tests/ -m "not integration" -v
+QT_QPA_PLATFORM=offscreen pytest tests/ -m "not integration" -v
 ```
 
 Lint:
 
 ```bash
-ruff check netdiag/
+ruff check netdiag/ tests/
 ```
 
 Type check:
@@ -393,14 +415,12 @@ Type check:
 mypy netdiag/ --ignore-missing-imports
 ```
 
-GitHub Actions checks:
+GitHub Actions checks (on every branch and pull request):
 
-- Ruff
-- Mypy
-- Unit tests
-- Pure GUI tests
-- Headless Qt GUI tests
-- Windows tests
+- Ruff (`netdiag/` and `tests/`)
+- Mypy (with PySide6 installed)
+- Unit tests on Linux, Python 3.10–3.13, including headless Qt GUI tests
+- Unit tests on Windows, including headless Qt GUI tests
 
 ---
 

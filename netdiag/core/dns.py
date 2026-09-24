@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 import socket
 import subprocess
 import time
@@ -37,6 +38,45 @@ def resolve_hostname(target: str, dns_server: str | None = None) -> DiagnosticRe
         )
 
 
+def _parse_nslookup_answers(output: str, server_ip: str) -> list[str]:
+    """Extract answer addresses (IPv4 and IPv6) from Windows nslookup output.
+
+    Handles single "Address:" lines and multi-line "Addresses:" blocks whose
+    continuation lines hold one bare address each.
+    """
+    ips: list[str] = []
+    in_answer = False
+    in_address_block = False
+    for raw_line in output.split("\n"):
+        line = raw_line.strip()
+        if line.startswith("Name:"):
+            in_answer = True
+            in_address_block = False
+            continue
+        if not in_answer or not line:
+            continue
+        if line.startswith("Address"):
+            # Split on the first colon only: IPv6 addresses contain colons.
+            candidate = line.split(":", 1)[1].strip()
+            in_address_block = True
+        elif in_address_block and _is_ip(line):
+            candidate = line
+        else:
+            in_address_block = False
+            continue
+        if candidate and candidate != server_ip:
+            ips.append(candidate)
+    return ips
+
+
+def _is_ip(value: str) -> bool:
+    try:
+        ipaddress.ip_address(value)
+    except ValueError:
+        return False
+    return True
+
+
 def compare_dns_servers(target: str) -> list[DiagnosticResult]:
     servers = {"System": None, "Google": "8.8.8.8", "Cloudflare": "1.1.1.1", "Quad9": "9.9.9.9"}
     results = []
@@ -67,17 +107,7 @@ def compare_dns_servers(target: str) -> list[DiagnosticResult]:
             if os_name == "Linux":
                 ips = [line.strip() for line in output.split("\n") if line.strip()]
             else:
-                ips = []
-                in_answer = False
-                for line in output.split("\n"):
-                    line = line.strip()
-                    if line.startswith("Name:"):
-                        in_answer = True
-                        continue
-                    if in_answer and line.startswith("Address"):
-                        ip = line.split(":")[-1].strip()
-                        if ip != server_ip:
-                            ips.append(ip)
+                ips = _parse_nslookup_answers(output, server_ip)
             if ips:
                 results.append(DiagnosticResult(
                     test_name=test_name, target=target, status=Status.PASS,

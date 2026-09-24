@@ -32,7 +32,7 @@ class ResultCard(QFrame):
         layout.addWidget(self._name_label)
 
         self._pill = QLabel("—")
-        self._pill.setAlignment(Qt.AlignLeft)
+        self._pill.setAlignment(Qt.AlignmentFlag.AlignLeft)
         layout.addWidget(self._pill)
 
         self._detail = QLabel("")
@@ -54,7 +54,7 @@ class ResultCard(QFrame):
         )
         text = self._last_detail
         metrics = self._detail.fontMetrics()
-        self._detail.setText(metrics.elidedText(text, Qt.ElideRight, 150))
+        self._detail.setText(metrics.elidedText(text, Qt.TextElideMode.ElideRight, 150))
         self._detail.setToolTip(text)
 
     def set_theme(self, theme: str) -> None:

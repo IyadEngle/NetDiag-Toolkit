@@ -36,7 +36,7 @@ class ScanWorker(QThread):
     diagnostic_result = Signal(object)   # DiagnosticResult
     security_finding = Signal(object)    # SecurityFinding
     completed = Signal(object)           # ScanReport
-    aborted = Signal(str)
+    aborted = Signal(str, object)        # (message, partial ScanReport)
 
     def __init__(self, target: str, mode: str = "diagnose",
                  timeout: int = 5, parent=None) -> None:
@@ -133,7 +133,7 @@ class ScanWorker(QThread):
         for index, (label, func) in enumerate(steps, start=1):
             if self._cancel_event.is_set():
                 self.progress.emit("Scan cancelled.")
-                self.aborted.emit("Scan cancelled by user.")
+                self.aborted.emit("Scan cancelled by user.", self.report)
                 return
 
             self.progress.emit(f"[{index}/{total}] {label}…")

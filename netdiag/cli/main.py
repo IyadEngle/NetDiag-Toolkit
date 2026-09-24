@@ -12,8 +12,36 @@ import click
 from netdiag import __version__
 from netdiag.utils.logging import setup_logging
 from netdiag.utils.models import ScanReport
+from netdiag.utils.validation import validate_target
 
 logger = setup_logging()
+
+# Exit codes are bit flags so scripts can test each condition independently.
+# 2 is left to Click, which uses it for usage errors (missing/invalid options).
+EXIT_OK = 0
+EXIT_DIAGNOSTIC_FAILURE = 1   # at least one diagnostic returned FAIL or ERROR
+EXIT_SECURITY_FAILURE = 4     # at least one security finding has status FAIL
+
+
+def exit_code_for(report: ScanReport) -> int:
+    """Map a finished report to the process exit code (see EXIT_* constants)."""
+    code = EXIT_OK
+    if report.failed or report.errors:
+        code |= EXIT_DIAGNOSTIC_FAILURE
+    if report.security_failures:
+        code |= EXIT_SECURITY_FAILURE
+    return code
+
+
+def _validate_target_option(ctx: click.Context, param: click.Parameter, value: str) -> str:
+    ok, normalized_or_error = validate_target(value)
+    if not ok:
+        raise click.BadParameter(normalized_or_error)
+    return normalized_or_error
+
+
+def _target_option(*decls: str, **kwargs):
+    return click.option(*decls, required=True, callback=_validate_target_option, **kwargs)
 
 
 def _run_diagnostics(target: str, full: bool = False, include_wifi: bool = False) -> ScanReport:
@@ -98,15 +126,26 @@ def _output_report(report: ScanReport, reporter: str, output: str | None):
         export_html(report, filepath)
         click.echo(f"Report saved to {filepath}", err=True)
 
+    click.get_current_context().exit(exit_code_for(report))
+
 
 @click.group()
 @click.version_option(version=__version__, prog_name="NetDiag-Toolkit")
 def cli():
-    """NetDiag-Toolkit: Advanced Network Diagnostics & Security Audit. Copyright (c) 2026 Iyad Engle."""
+    """NetDiag-Toolkit: Advanced Network Diagnostics & Security Audit. Copyright (c) 2026 Iyad Engle.
+
+    \b
+    Exit codes (bit flags):
+      0  no diagnostic failures and no security FAIL findings
+      1  one or more diagnostics returned FAIL or ERROR
+      2  usage error (invalid or missing options)
+      4  one or more security findings with status FAIL
+      5  both 1 and 4
+    """
 
 
 @cli.command()
-@click.option("--target", "-t", required=True, help="Target hostname or IP")
+@_target_option("--target", "-t", help="Target hostname or IP")
 @click.option("--full", is_flag=True, help="Include MTU and traceroute")
 @click.option("--wifi", is_flag=True, help="Include Wi-Fi info (Windows only)")
 @click.option("--reporter", "-r", type=click.Choice(["console", "json", "csv", "html"]), default="console")
@@ -118,7 +157,7 @@ def diagnose(target, full, wifi, reporter, output):
 
 
 @cli.command()
-@click.option("--target", "-t", required=True)
+@_target_option("--target", "-t")
 @click.option("--reporter", "-r", type=click.Choice(["console", "json", "csv", "html"]), default="console")
 @click.option("--output", "-o", default=None)
 def security(target, reporter, output):
@@ -128,7 +167,7 @@ def security(target, reporter, output):
 
 
 @cli.command()
-@click.option("--target", "-t", required=True)
+@_target_option("--target", "-t")
 @click.option("--reporter", "-r", type=click.Choice(["console", "json", "csv", "html"]), default="console")
 @click.option("--output", "-o", default=None)
 def full(target, reporter, output):
@@ -140,7 +179,7 @@ def full(target, reporter, output):
 
 
 @cli.command()
-@click.option("--target", "-t", required=True)
+@_target_option("--target", "-t")
 @click.option("--compare", is_flag=True)
 def dns(target, compare):
     """DNS resolution and comparison diagnostics."""
@@ -154,7 +193,7 @@ def dns(target, compare):
 
 
 @cli.command()
-@click.option("--target", "-t", required=True)
+@_target_option("--target", "-t")
 @click.option("--min-size", default=68, type=int)
 @click.option("--max-size", default=1500, type=int)
 def mtu(target, min_size, max_size):
@@ -166,7 +205,7 @@ def mtu(target, min_size, max_size):
 
 
 @cli.command()
-@click.option("--target", "-t", required=True)
+@_target_option("--target", "-t")
 @click.option("--ports", "-p", default="80,443")
 @click.option("--timeout", default=3.0, type=float)
 def tcp(target, ports, timeout):
@@ -179,7 +218,7 @@ def tcp(target, ports, timeout):
 
 
 @cli.command()
-@click.option("--target", "-t", required=True)
+@_target_option("--target", "-t")
 @click.option("--max-hops", default=30, type=int)
 def trace(target, max_hops):
     """Traceroute to a target."""
@@ -200,7 +239,7 @@ def discover(subnet):
 
 
 @cli.command()
-@click.option("--target", "-t", required=True)
+@_target_option("--target", "-t")
 @click.option("--ports", "-p", default="21,22,80,443,3306,3389,8080")
 def scan(target, ports):
     """TCP port scan a target (authorized systems only)."""
@@ -228,7 +267,7 @@ def network():
 
 
 @cli.command()
-@click.option("--target", "-t", required=True)
+@_target_option("--target", "-t")
 @click.option("--reporter", "-r", type=click.Choice(["console", "json", "csv", "html"]), default="console")
 @click.option("--output", "-o", default=None)
 def report(target, reporter, output):

@@ -17,10 +17,12 @@ def tcp_connect(host: str, port: int, timeout_seconds: float = 5.0) -> Diagnosti
     target = f"{host}:{port}"
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(timeout_seconds)
-        result = sock.connect_ex((host, port))
+        try:
+            sock.settimeout(timeout_seconds)
+            result = sock.connect_ex((host, port))
+        finally:
+            sock.close()
         duration_ms = (time.monotonic() - start) * 1000
-        sock.close()
 
         if result == 0:
             return DiagnosticResult(

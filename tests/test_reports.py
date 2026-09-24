@@ -1,8 +1,9 @@
 # Copyright (c) 2026 Iyad Engle. All rights reserved.
 
 import json
-from netdiag.reports.json_report import export_json
+
 from netdiag.reports.console import format_console_report
+from netdiag.reports.json_report import export_json
 
 
 class TestJSONReport:

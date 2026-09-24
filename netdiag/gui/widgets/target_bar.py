@@ -8,7 +8,7 @@ from __future__ import annotations
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QPushButton, QWidget
 
-from netdiag.gui.validation import validate_target
+from netdiag.utils.validation import validate_target
 
 
 class TargetBar(QWidget):

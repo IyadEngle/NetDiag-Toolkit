@@ -1,11 +1,11 @@
 # Copyright (c) 2026 Iyad Engle. All rights reserved.
 
 import ipaddress
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from netdiag.core.gateway import get_default_gateway, gateway_diagnostics
+from netdiag.core.gateway import gateway_diagnostics, get_default_gateway
 from netdiag.utils.models import Status
 
 

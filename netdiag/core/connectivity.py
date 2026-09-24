@@ -89,7 +89,12 @@ def ping(target: str, count: int = 4, timeout_seconds: int = 10) -> DiagnosticRe
         parsed = _parse_windows_ping(output) if os_name == "Windows" else _parse_linux_ping(output)
 
         if parsed.received > 0:
-            status = Status.PASS if parsed.loss_percent < 100 else Status.FAIL
+            if parsed.loss_percent <= 0:
+                status = Status.PASS
+            elif parsed.loss_percent < 100:
+                status = Status.WARN  # partial packet loss
+            else:
+                status = Status.FAIL
             evidence = (
                 f"Sent={parsed.sent} Received={parsed.received} Loss={parsed.loss_percent}% "
                 f"Min={parsed.min_ms}ms Avg={parsed.avg_ms}ms Max={parsed.max_ms}ms"

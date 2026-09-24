@@ -36,9 +36,11 @@ def port_scan(
     def _check_port(port: int) -> tuple[int, str]:
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(timeout_seconds)
-            result = sock.connect_ex((target, port))
-            sock.close()
+            try:
+                sock.settimeout(timeout_seconds)
+                result = sock.connect_ex((target, port))
+            finally:
+                sock.close()
             if result == 0:
                 return port, "OPEN"
             elif result in (10061, 111):

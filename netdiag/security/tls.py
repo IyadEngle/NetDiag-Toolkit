@@ -52,10 +52,9 @@ def _probe_tls_service(host: str, port: int, timeout: int = 10) -> tuple[bool, s
             ctx.verify_mode = ssl.CERT_NONE
             ctx.minimum_version = constant
             ctx.maximum_version = constant
-            sock = socket.create_connection((host, port), timeout=timeout)
-            ssock = ctx.wrap_socket(sock, server_hostname=host)
-            negotiated = ssock.version()
-            ssock.close()
+            with socket.create_connection((host, port), timeout=timeout) as sock:
+                with ctx.wrap_socket(sock, server_hostname=host) as ssock:
+                    negotiated = ssock.version()
             return True, f"Confirmed TLS service: negotiated {negotiated} on {host}:{port}"
         except Exception:
             continue
@@ -76,16 +75,14 @@ def _test_tls_version(
         return TLSProtocolStatus.INCONCLUSIVE, f"Local build cannot create context for {version_name}: {e}"
 
     try:
-        sock = socket.create_connection((host, port), timeout=timeout)
-        try:
-            ssock = ctx.wrap_socket(sock, server_hostname=host)
-            negotiated = ssock.version()
-            ssock.close()
-            return TLSProtocolStatus.SUPPORTED, f"Negotiated {negotiated} with {host}:{port}"
-        except ssl.SSLError as e:
-            sock.close()
-            return TLSProtocolStatus.INCONCLUSIVE, \
-                f"SSL error during {version_name} negotiation: {e}. Cannot determine cause."
+        with socket.create_connection((host, port), timeout=timeout) as sock:
+            try:
+                with ctx.wrap_socket(sock, server_hostname=host) as ssock:
+                    negotiated = ssock.version()
+                return TLSProtocolStatus.SUPPORTED, f"Negotiated {negotiated} with {host}:{port}"
+            except ssl.SSLError as e:
+                return TLSProtocolStatus.INCONCLUSIVE, \
+                    f"SSL error during {version_name} negotiation: {e}. Cannot determine cause."
     except (TimeoutError, ConnectionRefusedError, ConnectionResetError, OSError) as e:
         return TLSProtocolStatus.UNAVAILABLE, f"Network error: {e}"
 
@@ -202,11 +199,10 @@ def _retrieve_certificate(host: str, port: int = 443, timeout: int = 10) -> tupl
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         context.check_hostname = False
         context.verify_mode = ssl.CERT_NONE
-        sock = socket.create_connection((host, port), timeout=timeout)
-        ssock = context.wrap_socket(sock, server_hostname=host)
-        der_cert = ssock.getpeercert(binary_form=True)
-        negotiated = ssock.version()
-        ssock.close()
+        with socket.create_connection((host, port), timeout=timeout) as sock:
+            with context.wrap_socket(sock, server_hostname=host) as ssock:
+                der_cert = ssock.getpeercert(binary_form=True)
+                negotiated = ssock.version()
 
         if not der_cert:
             return None, negotiated, "PARSE_FAILED", "Server did not return certificate data."
@@ -334,13 +330,44 @@ def check_certificate_expiry(host: str, port: int = 443, timeout: int = 10) -> l
     return findings
 
 
+# OpenSSL X509 verification error codes (stable across OpenSSL 1.1 and 3.x).
+_X509_V_ERR_CERT_HAS_EXPIRED = 10
+_X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT = 18
+_X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN = 19
+_X509_V_ERR_HOSTNAME_MISMATCH = 62
+
+
+def _classify_verification_error(error: ssl.SSLCertVerificationError) -> str:
+    """Classify a verification failure as hostname_mismatch, self_signed, expired or other.
+
+    Prefers the numeric verify_code. Falls back to message text, accepting both
+    OpenSSL 1.1 ("self signed") and OpenSSL 3 ("self-signed") wording.
+    """
+    code = getattr(error, "verify_code", None)
+    if code == _X509_V_ERR_HOSTNAME_MISMATCH:
+        return "hostname_mismatch"
+    if code in (_X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT, _X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN):
+        return "self_signed"
+    if code == _X509_V_ERR_CERT_HAS_EXPIRED:
+        return "expired"
+
+    message = f"{getattr(error, 'verify_message', '') or ''} {error}".lower()
+    if "hostname mismatch" in message:
+        return "hostname_mismatch"
+    if "self signed" in message or "self-signed" in message:
+        return "self_signed"
+    if "expired" in message:
+        return "expired"
+    return "other"
+
+
 def check_certificate_hostname(host: str, port: int = 443, timeout: int = 10) -> list[SecurityFinding]:
     findings = []
     try:
         context = ssl.create_default_context()
-        sock = socket.create_connection((host, port), timeout=timeout)
-        ssock = context.wrap_socket(sock, server_hostname=host)
-        ssock.close()
+        with socket.create_connection((host, port), timeout=timeout) as sock:
+            with context.wrap_socket(sock, server_hostname=host):
+                pass
         findings.append(SecurityFinding(
             test_name="tls_cert_hostname", status=SecurityStatus.PASS, severity=Severity.INFO,
             title="TLS Certificate Hostname: Valid",
@@ -349,8 +376,8 @@ def check_certificate_hostname(host: str, port: int = 443, timeout: int = 10) ->
             recommendation="No action needed.", confidence=Confidence.CONFIRMED,
         ))
     except ssl.SSLCertVerificationError as e:
-        error_msg = str(e).lower()
-        if "hostname mismatch" in error_msg:
+        kind = _classify_verification_error(e)
+        if kind == "hostname_mismatch":
             findings.append(SecurityFinding(
                 test_name="tls_cert_hostname", status=SecurityStatus.FAIL, severity=Severity.HIGH,
                 title="TLS Certificate Hostname Mismatch",
@@ -359,7 +386,7 @@ def check_certificate_hostname(host: str, port: int = 443, timeout: int = 10) ->
                 recommendation="Ensure the certificate includes the correct hostname in SAN or CN.",
                 confidence=Confidence.CONFIRMED,
             ))
-        elif "self signed" in error_msg:
+        elif kind == "self_signed":
             cert_info, _, ret_status, _ = _retrieve_certificate(host, port, timeout)
             if ret_status == "OK" and cert_info is not None:
                 if cert_info.is_self_signed:
@@ -381,7 +408,7 @@ def check_certificate_hostname(host: str, port: int = 443, timeout: int = 10) ->
                 recommendation="Use a certificate from a trusted Certificate Authority.",
                 confidence=Confidence.CONFIRMED,
             ))
-        elif "expired" in error_msg:
+        elif kind == "expired":
             pass
         else:
             findings.append(SecurityFinding(

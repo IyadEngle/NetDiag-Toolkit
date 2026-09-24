@@ -2,9 +2,12 @@ name: Python CI
 
 on:
   push:
-    branches: [main, python-v0.3.0]
+    branches: ["**"]
   pull_request:
-    branches: [main]
+
+env:
+  # Qt widget tests run headless.
+  QT_QPA_PLATFORM: offscreen
 
 jobs:
   lint:
@@ -19,17 +22,23 @@ jobs:
         with:
           python-version: "3.12"
 
+      # The GUI extra is installed so mypy type-checks the PySide6 code
+      # against real stubs instead of treating Qt as Any.
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[gui,dev]"
 
       - name: Ruff
-        run: ruff check netdiag/
+        run: ruff check netdiag/ tests/
 
       - name: Mypy
         run: mypy netdiag/ --ignore-missing-imports
 
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
       - name: Checkout
@@ -38,12 +47,17 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Qt runtime libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3
 
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[gui,dev]"
 
-      - name: Unit tests
+      - name: Unit tests (including headless Qt GUI tests)
         run: pytest tests/ -m "not integration" -v --tb=short
 
   test-windows:
@@ -59,7 +73,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[gui,dev]"
 
-      - name: Unit tests
+      - name: Unit tests (including headless Qt GUI tests)
         run: pytest tests/ -m "not integration" -v --tb=short

@@ -33,9 +33,11 @@ def check_tcp_exposure(
     def _check_port(port: int) -> int | None:
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(timeout_seconds)
-            result = sock.connect_ex((target, port))
-            sock.close()
+            try:
+                sock.settimeout(timeout_seconds)
+                result = sock.connect_ex((target, port))
+            finally:
+                sock.close()
             return port if result == 0 else None
         except Exception:
             return None

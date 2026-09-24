@@ -9,7 +9,7 @@ class TestHTMLExport:
         assert "<!DOCTYPE html>" in output
 
     def test_escapes_html(self):
-        from netdiag.utils.models import ScanReport, DiagnosticResult, Status
+        from netdiag.utils.models import DiagnosticResult, ScanReport, Status
         report = ScanReport(target="<script>alert(1)</script>")
         report.results = [DiagnosticResult(
             test_name="<img onerror=x>", target="<script>",

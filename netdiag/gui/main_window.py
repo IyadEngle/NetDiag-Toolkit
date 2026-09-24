@@ -110,7 +110,7 @@ class PreferencesDialog(QDialog):
         dir_row.addWidget(browse)
         form.addRow("Report folder", dir_row)
 
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         form.addRow(buttons)
@@ -140,6 +140,7 @@ class MainWindow(QMainWindow):
         self._theme = self._settings.theme()
         self._report: ScanReport | None = None
         self._worker: ScanWorker | None = None
+        self._close_pending = False
 
         self._log_handler = QtLogHandler()
         self._logger = setup_logging()
@@ -294,9 +295,23 @@ class MainWindow(QMainWindow):
             f"{report.errors} errors, {len(report.findings)} security result(s)."
         )
 
-    def _on_aborted(self, message: str) -> None:
+    def _on_aborted(self, message: str, report: ScanReport | None = None) -> None:
         self._append_log(message)
         self._finish_run()
+        if report is None:
+            return
+        # Keep whatever completed before cancellation so it can still be exported.
+        self._report = report
+        if report.results or report.findings:
+            self.summary_label.setText(
+                f"Cancelled — partial results: {report.passed} passed · {report.failed} failed · "
+                f"{len(report.findings)} security result(s)"
+            )
+            self.report_panel.set_has_report(True)
+            self._append_log(
+                f"Partial results kept: {len(report.results)} diagnostic(s), "
+                f"{len(report.findings)} security result(s)."
+            )
 
     def _on_thread_finished(self) -> None:
         self._worker = None
@@ -318,7 +333,7 @@ class MainWindow(QMainWindow):
     # ─── settings / theme ────────────────────────────────────────────────
     def _open_preferences(self) -> None:
         dialog = PreferencesDialog(self._settings, self)
-        if dialog.exec() == QDialog.Accepted:
+        if dialog.exec() == QDialog.DialogCode.Accepted:
             dialog.apply()
             self.apply_theme(self._settings.theme())
             self._apply_log_level(self._settings.log_level())
@@ -328,7 +343,7 @@ class MainWindow(QMainWindow):
     def apply_theme(self, theme: str) -> None:
         self._theme = theme
         app = QApplication.instance()
-        if app is not None:
+        if isinstance(app, QApplication):
             app.setStyleSheet(build_stylesheet(theme))
         self.diag_panel.set_theme(theme)
         self.sec_panel.set_theme(theme)
@@ -357,15 +372,37 @@ class MainWindow(QMainWindow):
         )
 
     def closeEvent(self, event) -> None:  # noqa: N802 — Qt naming
-        if self._worker is not None and self._worker.isRunning():
+        worker = self._worker
+        if worker is not None and worker.isRunning():
+            if self._close_pending:
+                event.ignore()  # already waiting for the current step to finish
+                return
             answer = QMessageBox.question(
                 self, "Scan in progress",
                 "A scan is still running. Cancel it and exit?",
-                QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
             )
-            if answer != QMessageBox.Yes:
+            if answer != QMessageBox.StandardButton.Yes:
                 event.ignore()
                 return
-            self._worker.cancel()
-            self._worker.wait(5000)
+            worker.cancel()
+            if not worker.wait(2000):
+                # Never destroy a QThread that is still running (Qt aborts the
+                # process). Close again once the current test step returns.
+                self._close_pending = True
+                self._status_dot.setText("● Closing…")
+                self._append_log("Waiting for the current test step to finish before exiting…")
+                central = self.centralWidget()
+                if central is not None:
+                    central.setEnabled(False)
+                worker.finished.connect(self.close)
+                event.ignore()
+                return
+        self._detach_log_handler()
         event.accept()
+
+    def _detach_log_handler(self) -> None:
+        """Stop routing 'netdiag' log records to this window once it closes."""
+        if self._log_handler in self._logger.handlers:
+            self._logger.removeHandler(self._log_handler)
