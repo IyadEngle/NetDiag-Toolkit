@@ -12,6 +12,7 @@ import socket
 import time
 
 from netdiag.utils import process
+from netdiag.utils.execution import connect_host
 from netdiag.utils.models import DiagnosticResult, Status
 
 COMMON_PORTS = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 993, 995, 3306, 3389, 5900, 8080]
@@ -39,7 +40,7 @@ def port_scan(
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
                 sock.settimeout(timeout_seconds)
-                result = sock.connect_ex((target, port))
+                result = sock.connect_ex((connect_host(target), port))
             finally:
                 sock.close()
             if result == 0:
@@ -51,7 +52,9 @@ def port_scan(
             return port, "FILTERED"
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_concurrent) as executor:
-        states = list(executor.map(_check_port, ports))
+        # One context copy per task so an active scan scope reaches the pool threads.
+        futures = [executor.submit(contextvars.copy_context().run, _check_port, port) for port in ports]
+        states = [future.result() for future in futures]
 
     for port, state in states:
         if state == "OPEN":

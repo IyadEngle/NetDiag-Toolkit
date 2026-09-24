@@ -114,7 +114,15 @@ class ScanCache:
         with self._lock:
             return key in self._values
 
-    def get_or_compute(self, key: Any, compute: Callable[[], T]) -> T:
+    def get_or_compute(
+        self, key: Any, compute: Callable[[], T], cache_if: Callable[[T], bool] | None = None,
+    ) -> T:
+        """Return the cached value for `key`, computing it once if absent.
+
+        When `cache_if` is given, a computed value is stored only if
+        `cache_if(value)` is true (e.g. cache successful handshakes only);
+        otherwise the next caller computes again.
+        """
         with self._lock:
             if key in self._values:
                 return self._values[key]  # type: ignore[no-any-return]
@@ -124,8 +132,9 @@ class ScanCache:
                 if key in self._values:
                     return self._values[key]  # type: ignore[no-any-return]
             value = compute()
-            with self._lock:
-                self._values[key] = value
+            if cache_if is None or cache_if(value):
+                with self._lock:
+                    self._values[key] = value
             return value
 
 
@@ -200,12 +209,23 @@ def check_cancelled() -> None:
         scope.check_cancelled()
 
 
-def cached(key: Any, compute: Callable[[], T]) -> T:
-    """Compute once per scan when a cache is active; otherwise compute every call."""
+def cached(key: Any, compute: Callable[[], T], cache_if: Callable[[T], bool] | None = None) -> T:
+    """Compute once per scan when a cache is active; otherwise compute every call.
+
+    `cache_if` restricts which values are kept (see ScanCache.get_or_compute).
+    """
     scope = current_scope()
     if scope is None or scope.cache is None:
         return compute()
-    return scope.cache.get_or_compute(key, compute)
+    return scope.cache.get_or_compute(key, compute, cache_if)
+
+
+def cached_value(key: Any, default: Any = None) -> Any:
+    """Look up a value cached earlier in this scan without computing anything."""
+    scope = current_scope()
+    if scope is None or scope.cache is None:
+        return default
+    return scope.cache.get(key, default)
 
 
 _RESOLUTION_KEY = "resolved_ipv4"

@@ -15,6 +15,7 @@ import ssl
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
+from netdiag.utils.execution import cached, cached_value, connect_host
 from netdiag.utils.models import Confidence, SecurityFinding, SecurityStatus, Severity
 
 
@@ -42,6 +43,10 @@ def _classify_ssl_error_for_protocol(error: ssl.SSLError) -> TLSProtocolStatus:
 
 
 def _probe_tls_service(host: str, port: int, timeout: int = 10) -> tuple[bool, str]:
+    negotiated = _cached_negotiated_version(host, port)
+    if negotiated in ("TLSv1.3", "TLSv1.2"):
+        # A certificate handshake earlier in this scan already negotiated TLS 1.2/1.3.
+        return True, f"Confirmed TLS service: negotiated {negotiated} on {host}:{port}"
     for version_name in ("TLSv1.3", "TLSv1.2"):
         constant = _get_tls_version_constant(version_name)
         if constant is None:
@@ -52,7 +57,7 @@ def _probe_tls_service(host: str, port: int, timeout: int = 10) -> tuple[bool, s
             ctx.verify_mode = ssl.CERT_NONE
             ctx.minimum_version = constant
             ctx.maximum_version = constant
-            with socket.create_connection((host, port), timeout=timeout) as sock:
+            with socket.create_connection((connect_host(host), port), timeout=timeout) as sock:
                 with ctx.wrap_socket(sock, server_hostname=host) as ssock:
                     negotiated = ssock.version()
             return True, f"Confirmed TLS service: negotiated {negotiated} on {host}:{port}"
@@ -74,8 +79,12 @@ def _test_tls_version(
     except (ValueError, ssl.SSLError, OverflowError, AttributeError) as e:
         return TLSProtocolStatus.INCONCLUSIVE, f"Local build cannot create context for {version_name}: {e}"
 
+    if _cached_negotiated_version(host, port) == version_name:
+        # The cached handshake already negotiated exactly this version.
+        return TLSProtocolStatus.SUPPORTED, f"Negotiated {version_name} with {host}:{port}"
+
     try:
-        with socket.create_connection((host, port), timeout=timeout) as sock:
+        with socket.create_connection((connect_host(host), port), timeout=timeout) as sock:
             try:
                 with ctx.wrap_socket(sock, server_hostname=host) as ssock:
                     negotiated = ssock.version()
@@ -194,12 +203,42 @@ def _cryptographic_self_signed_check(cert) -> bool | None:
         return None
 
 
+# Handshake outcomes worth reusing within a scan: the TLS handshake completed.
+# CONNECTION_FAILED is not cached, so a later check retries the connection as before.
+_REUSABLE_HANDSHAKE_STATUSES = ("OK", "PARSE_FAILED", "CRYPTOGRAPHY_UNAVAILABLE")
+
+
+def _handshake_cache_key(host: str, port: int) -> tuple[str, str, int]:
+    return ("tls.handshake", host.lower(), port)
+
+
+def _cached_negotiated_version(host: str, port: int) -> str | None:
+    """TLS version negotiated by a certificate handshake cached earlier in this scan."""
+    entry = cached_value(_handshake_cache_key(host, port))
+    if isinstance(entry, tuple) and len(entry) == 4 and entry[2] in _REUSABLE_HANDSHAKE_STATUSES:
+        negotiated = entry[1]
+        return negotiated if isinstance(negotiated, str) else None
+    return None
+
+
 def _retrieve_certificate(host: str, port: int = 443, timeout: int = 10) -> tuple:
+    """Certificate handshake, performed once per (host, port) within a scan.
+
+    Outside a scan every call performs a new handshake, as before.
+    """
+    return cached(
+        _handshake_cache_key(host, port),
+        lambda: _fetch_certificate(host, port, timeout),
+        cache_if=lambda result: result[2] in _REUSABLE_HANDSHAKE_STATUSES,
+    )
+
+
+def _fetch_certificate(host: str, port: int = 443, timeout: int = 10) -> tuple:
     try:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         context.check_hostname = False
         context.verify_mode = ssl.CERT_NONE
-        with socket.create_connection((host, port), timeout=timeout) as sock:
+        with socket.create_connection((connect_host(host), port), timeout=timeout) as sock:
             with context.wrap_socket(sock, server_hostname=host) as ssock:
                 der_cert = ssock.getpeercert(binary_form=True)
                 negotiated = ssock.version()
@@ -365,7 +404,7 @@ def check_certificate_hostname(host: str, port: int = 443, timeout: int = 10) ->
     findings = []
     try:
         context = ssl.create_default_context()
-        with socket.create_connection((host, port), timeout=timeout) as sock:
+        with socket.create_connection((connect_host(host), port), timeout=timeout) as sock:
             with context.wrap_socket(sock, server_hostname=host):
                 pass
         findings.append(SecurityFinding(

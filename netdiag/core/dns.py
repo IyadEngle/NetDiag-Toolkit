@@ -10,6 +10,7 @@ import socket
 import time
 
 from netdiag.utils import process
+from netdiag.utils.execution import remember_resolution
 from netdiag.utils.models import DiagnosticResult, Status
 
 
@@ -19,6 +20,10 @@ def resolve_hostname(target: str, dns_server: str | None = None) -> DiagnosticRe
         ips = socket.getaddrinfo(target, None, socket.AF_INET)
         duration_ms = (time.monotonic() - start) * 1000
         unique_ips = sorted({addr[4][0] for addr in ips if isinstance(addr[4][0], str)})
+        preferred = next((addr[4][0] for addr in ips if isinstance(addr[4][0], str)), None)
+        if preferred is not None:
+            # getaddrinfo order is the OS preference; later steps of a scan reuse it.
+            remember_resolution(target, preferred)
         return DiagnosticResult(
             test_name="dns_resolution", target=target, status=Status.PASS,
             evidence=f"Resolved to: {', '.join(unique_ips)}",

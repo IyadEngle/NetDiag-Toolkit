@@ -9,8 +9,10 @@ An open port is NOT a vulnerability.
 from __future__ import annotations
 
 import concurrent.futures
+import contextvars
 import socket
 
+from netdiag.utils.execution import connect_host
 from netdiag.utils.models import Confidence, SecurityFinding, SecurityStatus, Severity
 
 SERVICE_NAMES = {
@@ -35,7 +37,7 @@ def check_tcp_exposure(
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
                 sock.settimeout(timeout_seconds)
-                result = sock.connect_ex((target, port))
+                result = sock.connect_ex((connect_host(target), port))
             finally:
                 sock.close()
             return port if result == 0 else None
@@ -43,7 +45,9 @@ def check_tcp_exposure(
             return None
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_concurrent) as executor:
-        results = list(executor.map(_check_port, ports))
+        # One context copy per task so an active scan scope reaches the pool threads.
+        futures = [executor.submit(contextvars.copy_context().run, _check_port, port) for port in ports]
+        results = [future.result() for future in futures]
 
     reachable = [p for p in results if p is not None]
 
