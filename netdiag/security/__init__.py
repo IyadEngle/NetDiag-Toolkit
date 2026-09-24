@@ -1,5 +1,5 @@
-# Copyright (c) 2026 Iyad Engle. All rights reserved.
-# Licensed under the MIT License. See LICENSE file for details.
+# Copyright (c) 2026 Iyad Engle
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 from netdiag.security.dns_security import check_dnssec, check_open_resolver
 from netdiag.security.exposure import check_tcp_exposure

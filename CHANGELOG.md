@@ -2,6 +2,16 @@
 
 Copyright (c) 2026 Iyad Engle
 
+## [Unreleased]
+
+### Changed
+- License changed from MIT to the GNU General Public License v3.0 or later
+  (`GPL-3.0-or-later`): `LICENSE` now contains the unmodified GPLv3 text;
+  package metadata, SPDX headers in all source, test and workflow files, the
+  README, the GUI About box and the `NetDiag.ps1` help were updated to match.
+  No functional changes. Releases up to and including 0.5.0b0 remain available
+  under the MIT License.
+
 ## [0.5.0b0] - 2026-09-24
 
 Beta. The CLI and GUI now run every scan through one shared scan runner.

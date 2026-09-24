@@ -1,4 +1,5 @@
-# Copyright (c) 2026 Iyad Engle. All rights reserved.
+# Copyright (c) 2026 Iyad Engle
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 """GUI tests that require PySide6. Run headless in CI via QT_QPA_PLATFORM=offscreen."""
 

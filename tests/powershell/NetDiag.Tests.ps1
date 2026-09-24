@@ -1,4 +1,5 @@
-# Copyright (c) 2026 Iyad Engle. All rights reserved.
+# Copyright (c) 2026 Iyad Engle
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Pester 5 tests for the legacy NetDiag.ps1 script.
 # Run: Invoke-Pester -Path tests/powershell
 
