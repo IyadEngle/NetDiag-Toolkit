@@ -1,5 +1,5 @@
-# Copyright (c) 2026 Iyad Engle. All rights reserved.
-# Licensed under the MIT License. See LICENSE file for details.
+# Copyright (c) 2026 Iyad Engle
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # CodeQL code scanning (advanced setup). Results appear in the repository's
 # Security tab under "Code scanning". Do not also enable CodeQL "default setup"

@@ -3,13 +3,13 @@
 **Advanced Network Diagnostics & Security Audit Toolkit** — CLI + native desktop GUI
 
 Copyright (c) 2026 Iyad Engle · Author: **Iyad Engle** ([@IyadEngle](https://github.com/IyadEngle)) ·
-Repository: https://github.com/IyadEngle/NetDiag-Toolkit · License: [MIT](LICENSE) ·
+Repository: https://github.com/IyadEngle/NetDiag-Toolkit · License: [GPL-3.0-or-later](LICENSE) ·
 Security: [SECURITY.md](SECURITY.md)
 
 ![Version](https://img.shields.io/badge/version-0.5.0--beta-orange)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%2F%2011-lightgrey)
-![License](https://img.shields.io/badge/license-MIT-green)
+![License](https://img.shields.io/badge/license-GPLv3%2B-blue)
 
 > ⚠️ **Beta release.** `0.5.0b0` moves the CLI and the PySide6 GUI onto one shared scan runner: both build the same scan plan, run independent checks in parallel, support real cancellation, and reuse DNS and TLS results within a scan. Diagnostics, security checks, result models and status semantics are unchanged.
 
@@ -623,7 +623,17 @@ Screenshots are intentionally not included yet. Add them after validating the Wi
 
 # License
 
-MIT License.
+NetDiag-Toolkit is free software: you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software Foundation,
+either version 3 of the License, or (at your option) any later version
+(SPDX: `GPL-3.0-or-later`).
+
+NetDiag-Toolkit is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+Releases up to and including v0.5.0b0 were published under the MIT License; those
+releases remain available under the MIT License.
 
 Copyright (c) 2026 Iyad Engle
 

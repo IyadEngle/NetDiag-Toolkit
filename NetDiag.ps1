@@ -24,7 +24,9 @@
     .\NetDiag.ps1 -DnsServers 1.1.1.1,8.8.8.8 -DnsQuery cloudflare.com
 
 .NOTES
-    Copyright (c) 2026 Iyad Engle. Licensed under the MIT License.
+    Copyright (c) 2026 Iyad Engle.
+    Licensed under the GNU General Public License v3.0 or later (GPL-3.0-or-later).
+    This program comes with ABSOLUTELY NO WARRANTY. See the LICENSE file.
     https://github.com/IyadEngle/NetDiag-Toolkit
 #>
 

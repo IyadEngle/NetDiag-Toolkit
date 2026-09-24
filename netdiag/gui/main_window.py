@@ -1,5 +1,5 @@
-# Copyright (c) 2026 Iyad Engle. All rights reserved.
-# Licensed under the MIT License. See LICENSE file for details.
+# Copyright (c) 2026 Iyad Engle
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 """Main application window: header, target bar, panels, reports, log, settings."""
 
@@ -368,7 +368,9 @@ class MainWindow(QMainWindow):
             f"<b>NetDiag-Toolkit</b><br>GUI {GUI_VERSION} · core {__version__}<br><br>"
             "Network diagnostics and security configuration auditing.<br>"
             "Read-only: no exploitation, no credential attacks, no remediation.<br><br>"
-            "Copyright (c) 2026 Iyad Engle — MIT License"
+            "Copyright (c) 2026 Iyad Engle<br>"
+            "Licensed under the GNU General Public License v3.0 or later (GPL-3.0-or-later).<br>"
+            "This program comes with ABSOLUTELY NO WARRANTY."
         )
 
     def closeEvent(self, event) -> None:  # noqa: N802 — Qt naming

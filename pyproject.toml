@@ -1,5 +1,5 @@
-# Copyright (c) 2026 Iyad Engle. All rights reserved.
-# Licensed under the MIT License. See LICENSE file for details.
+# Copyright (c) 2026 Iyad Engle
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 [build-system]
 requires = ["setuptools>=68.0", "wheel"]
@@ -10,7 +10,7 @@ name = "netdiag-toolkit"
 version = "0.5.0b0"
 description = "Advanced Network Diagnostics & Security Audit Toolkit"
 readme = "README.md"
-license = { text = "MIT" }
+license = { text = "GPL-3.0-or-later" }
 requires-python = ">=3.10"
 authors = [
     { name = "Iyad Engle" },
@@ -20,7 +20,7 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: System Administrators",
     "Intended Audience :: Information Technology",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Operating System :: Microsoft :: Windows :: Windows 10",
     "Operating System :: Microsoft :: Windows :: Windows 11",
     "Programming Language :: Python :: 3.10",

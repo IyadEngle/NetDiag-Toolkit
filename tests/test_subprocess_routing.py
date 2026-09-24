@@ -1,4 +1,5 @@
-# Copyright (c) 2026 Iyad Engle. All rights reserved.
+# Copyright (c) 2026 Iyad Engle
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 """Every diagnostic subprocess goes through netdiag.utils.process.run.
 

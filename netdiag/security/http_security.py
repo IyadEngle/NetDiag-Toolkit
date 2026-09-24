@@ -1,5 +1,5 @@
-# Copyright (c) 2026 Iyad Engle. All rights reserved.
-# Licensed under the MIT License. See LICENSE file for details.
+# Copyright (c) 2026 Iyad Engle
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 """
 HTTP security headers audit. Header absence is an OBSERVATION, not a security failure.
