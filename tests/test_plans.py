@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Iyad Engle. All rights reserved.
 
-"""Phase 5: the shared scan plans reproduce the current CLI and GUI exactly.
+"""The shared scan plans reproduce the CLI and GUI exactly.
 
 Every diagnostic/security function is replaced by a fake that records its
 call and returns results whose evidence encodes all of its arguments (after

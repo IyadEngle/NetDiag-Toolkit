@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Iyad Engle. All rights reserved.
 
-"""Phase 3: DNS resolution and TLS handshake reuse within a scan.
+"""DNS resolution and TLS handshake reuse within a scan.
 
 Inside a scan (an ExecutionScope with a shared ScanCache):
 - the DNS step records the resolved address, and socket-based checks connect
@@ -8,7 +8,7 @@ Inside a scan (an ExecutionScope with a shared ScanCache):
   original hostname
 - one certificate handshake is shared by the certificate checks, the TLS
   service probe and the matching protocol-version test
-Outside a scan every function behaves exactly as before.
+Outside a scan nothing is reused: each call resolves and handshakes itself.
 """
 
 from __future__ import annotations
@@ -191,7 +191,7 @@ def _comparable(findings) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Cache helpers added in Phase 3
+# Cache helpers
 # ---------------------------------------------------------------------------
 
 class TestCacheHelpers:

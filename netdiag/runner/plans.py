@@ -5,10 +5,10 @@
 
 `build_plan` assembles the multi-step scans; the `*_plan` functions build the
 one-step plans used by the CLI's single-purpose commands. Each step calls an
-existing diagnostic or security function with the same arguments the CLI or
-GUI passed before, so results and statuses are unchanged.
+existing diagnostic or security function with the arguments its CLI command or
+GUI mode defines, so results and statuses match a direct call of that function.
 
-Two presentation profiles reproduce the existing front ends exactly:
+Two presentation profiles match the two front ends:
 
 - "cli": MTU/traceroute are reported before the gateway; gateway and Wi-Fi
   targets are relabeled "gateway(<target>)" / "wifi(<target>)"; each function
@@ -18,7 +18,8 @@ Two presentation profiles reproduce the existing front ends exactly:
 
 Scheduling (only visible as ordering constraints, never in the report):
 - "dns" runs first for everything that benefits from the resolved address
-  (ping, TCP, MTU, traceroute, TLS, TCP exposure); see Phase 3 reuse
+  (ping, TCP, MTU, traceroute, TLS, TCP exposure); see the reuse helpers in
+  netdiag.utils.execution
 - ping, MTU and traceroute share the ICMP lane (never concurrent, so MTU
   probes and traceroute cannot distort ping loss/latency)
 - the three TLS checks share a TLS lane and run after the certificate-expiry
@@ -263,7 +264,7 @@ def cli_full_plan(target: str) -> ScanPlan:
 
 
 def cli_report_plan(target: str) -> ScanPlan:
-    """`netdiag report`: like `full` but without Wi-Fi (as before)."""
+    """`netdiag report`: like `full` but without Wi-Fi."""
     return build_plan(target, extended=True, security=True)
 
 
@@ -293,12 +294,12 @@ def dns_plan(target: str, compare: bool = False) -> ScanPlan:
 
 
 def mtu_plan(target: str, min_size: int = 68, max_size: int = 1500) -> ScanPlan:
-    """`netdiag mtu`. No DNS step, so the tool resolves the name itself (as before)."""
+    """`netdiag mtu`. No DNS step, so the MTU tool resolves the name itself."""
     return ScanPlan(target, (_mtu_step(target, (), pin=False, sizes=(min_size, max_size)),))
 
 
 def tcp_plan(target: str, ports: list[int], timeout: float = 3.0) -> ScanPlan:
-    """`netdiag tcp`: one step, tcp_multi_port as before (results sorted by port)."""
+    """`netdiag tcp`: one tcp_multi_port step (results sorted by port)."""
     step = Step("tcp", "TCP connectivity", "diagnostic",
                 _bound("netdiag.core.tcp", "tcp_multi_port", target, ports=list(ports), timeout_seconds=timeout),
                 budget_s=port_scan_budget(len(ports), timeout, TCP_MULTI_CONCURRENCY), test_name="tcp_connect")

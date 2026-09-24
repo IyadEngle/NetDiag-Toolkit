@@ -40,7 +40,7 @@ The GUI is a native PySide6 desktop application. It does not use Electron or a b
 - Diagnostic results table
 - Security findings panel
 - PASS / FAIL / OBSERVATION / SKIP / ERROR / INCONCLUSIVE status semantics
-- Background workers so the window remains responsive
+- Scans run in a background thread on the shared scan runner, so the window stays responsive
 - Immediate cancellation: running commands (`ping`, `tracert`, …) are stopped and completed results are kept
 - JSON / CSV / HTML export using the existing report exporters
 - Activity log

@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Iyad Engle. All rights reserved.
 
-"""Phase 7: the GUI runs its scans on the shared runner.
+"""The GUI runs its scans on the shared runner.
 
 ScanWorker is a thin adapter over ScanRunner + gui_plan: results are shown in
 plan order even though steps run in parallel, cancellation stops running

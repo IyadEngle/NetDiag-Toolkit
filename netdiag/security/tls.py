@@ -204,7 +204,7 @@ def _cryptographic_self_signed_check(cert) -> bool | None:
 
 
 # Handshake outcomes worth reusing within a scan: the TLS handshake completed.
-# CONNECTION_FAILED is not cached, so a later check retries the connection as before.
+# CONNECTION_FAILED is not cached, so a later check retries the connection.
 _REUSABLE_HANDSHAKE_STATUSES = ("OK", "PARSE_FAILED", "CRYPTOGRAPHY_UNAVAILABLE")
 
 
@@ -224,7 +224,7 @@ def _cached_negotiated_version(host: str, port: int) -> str | None:
 def _retrieve_certificate(host: str, port: int = 443, timeout: int = 10) -> tuple:
     """Certificate handshake, performed once per (host, port) within a scan.
 
-    Outside a scan every call performs a new handshake, as before.
+    Outside a scan every call performs a new handshake.
     """
     return cached(
         _handshake_cache_key(host, port),

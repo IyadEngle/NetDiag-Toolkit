@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Iyad Engle. All rights reserved.
 
-"""Phase 6: the CLI runs every command through the shared runner.
+"""The CLI runs every command through the shared runner.
 
 - each command executes exactly one plan (full/report: one combined plan)
 - output, ordering and exit codes are unchanged; progress appears only when
