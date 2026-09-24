@@ -22,6 +22,10 @@
 
 .EXAMPLE
     .\NetDiag.ps1 -DnsServers 1.1.1.1,8.8.8.8 -DnsQuery cloudflare.com
+
+.NOTES
+    Copyright (c) 2026 Iyad Engle. Licensed under the MIT License.
+    https://github.com/IyadEngle/NetDiag-Toolkit
 #>
 
 [CmdletBinding()]

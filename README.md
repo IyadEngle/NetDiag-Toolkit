@@ -2,7 +2,9 @@
 
 **Advanced Network Diagnostics & Security Audit Toolkit** — CLI + native desktop GUI
 
-Copyright (c) 2026 Iyad Engle
+Copyright (c) 2026 Iyad Engle · Author: **Iyad Engle** ([@IyadEngle](https://github.com/IyadEngle)) ·
+Repository: https://github.com/IyadEngle/NetDiag-Toolkit · License: [MIT](LICENSE) ·
+Security: [SECURITY.md](SECURITY.md)
 
 ![Version](https://img.shields.io/badge/version-0.5.0--beta-orange)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
@@ -406,6 +408,8 @@ It intentionally does **not** perform:
 The tool **does contact user-specified targets** as part of diagnostics, including ICMP, TCP, DNS, HTTPS, and traceroute traffic.
 
 It has **no telemetry and no centralized third-party data collection**. Reports are generated locally.
+
+To report a vulnerability in NetDiag-Toolkit itself, follow [SECURITY.md](SECURITY.md) (private reporting; please do not open a public issue).
 
 ---
 
