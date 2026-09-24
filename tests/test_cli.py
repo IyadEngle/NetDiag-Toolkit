@@ -101,8 +101,8 @@ class TestExitCodes:
         assert result.exit_code == expected
 
     def test_full_command_combines_flags(self):
-        with patch.object(cli_module, "_run_diagnostics", return_value=_report(Status.ERROR)), \
-             patch.object(cli_module, "_run_security_audit", return_value=_report(security=SecurityStatus.FAIL)):
+        combined = _report(Status.ERROR, SecurityStatus.FAIL)   # `full` runs one combined plan
+        with patch.object(cli_module, "_run_full_scan", return_value=combined):
             result = CliRunner().invoke(cli, ["full", "-t", "example.com", "-r", "json"])
         assert result.exit_code == 5
 
