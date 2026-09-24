@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Iyad Engle. All rights reserved.
 
-"""Phase 4: the shared scan runner with synthetic steps.
+"""The shared scan runner with synthetic steps.
 
 Covers plan validation, report ordering, dependencies, lanes, max_workers,
 parallelism, per-step budgets, cancellation (including real subprocess

@@ -1,10 +1,10 @@
 # Copyright (c) 2026 Iyad Engle. All rights reserved.
 
-"""Phase 2: every diagnostic subprocess goes through netdiag.utils.process.run.
+"""Every diagnostic subprocess goes through netdiag.utils.process.run.
 
 - A guard test forbids direct `subprocess` calls outside utils/process.py.
-- Parity tests: direct calls (no scan) reach subprocess.run with the exact
-  arguments used before the migration.
+- Parity tests: direct calls (no scan) reach subprocess.run with exactly the
+  arguments the original direct subprocess calls used (recorded below).
 - End-to-end tests (POSIX): real diagnostic code running fake, slow `ping`
   executables inside a scan scope is cancelled / time-limited correctly.
 """
@@ -57,7 +57,7 @@ class TestNoDirectSubprocessCalls:
 
 # ---------------------------------------------------------------------------
 # Parity: outside a scan, each call site hands subprocess.run the same arguments
-# as before the migration (captured from the pre-Phase-2 source).
+# as the original direct subprocess calls (recorded from that source).
 # ---------------------------------------------------------------------------
 
 def _mod(name: str):

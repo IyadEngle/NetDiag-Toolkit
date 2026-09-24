@@ -46,9 +46,6 @@ class ScanWorker(QThread):
                  timeout: int = 5, parent=None) -> None:
         super().__init__(parent)
         self._plan = gui_plan(target, mode, timeout)   # type: ignore[arg-type]  # validates mode
-        self._target = target
-        self._mode = mode
-        self._timeout = timeout
         self._token = CancelToken()
         self._step_index = {step.id: index for index, step in enumerate(self._plan.steps)}
         self._items_emitted: dict[str, int] = {}

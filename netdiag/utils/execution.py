@@ -11,8 +11,8 @@ it and fall back to plain behavior when no scope is active:
 - `connect_host(host)` returns the IP already resolved for `host`, else `host`
 - `cached(key, fn)` computes `fn()` once per scan, else on every call
 
-Direct calls to diagnostic functions outside a scan therefore behave exactly
-as before.
+Direct calls to diagnostic functions outside a scan therefore use none of
+these: no cancellation, no deadline, no reuse.
 """
 
 from __future__ import annotations

@@ -107,7 +107,7 @@ def _run_security_audit(target: str) -> ScanReport:
 
 def _run_full_scan(target: str, include_wifi: bool) -> ScanReport:
     """Diagnostics and security audit as one plan, so both run in parallel and the
-    security checks reuse the DNS step's resolution. Same stderr lines as before."""
+    security checks reuse the DNS step's resolution. Both start lines go to stderr."""
     click.echo(f"Running diagnostics against {target}...", err=True)
     click.echo(f"Running security audit against {target}...", err=True)
     plan = scan_plans.cli_full_plan(target) if include_wifi else scan_plans.cli_report_plan(target)
