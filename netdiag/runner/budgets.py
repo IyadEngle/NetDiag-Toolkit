@@ -55,3 +55,25 @@ def host_discovery_budget(host_count: int, timeout_s: float, concurrency: int) -
     """Budget for an ICMP sweep: waves of pings, each up to `timeout_s + 2` (subprocess timeout)."""
     waves = max(1, math.ceil(host_count / max(1, concurrency)))
     return waves * (timeout_s + 2) + _MARGIN_S
+
+
+def scaled_budget(step_id: str, worst_case_s: float) -> float:
+    """Budget for `step_id` given the worst case of the arguments actually passed.
+
+    Keeps the default headroom above the worst case: with default arguments this
+    is exactly DEFAULT_BUDGETS_S[step_id]; larger timeouts (e.g. the GUI's probe
+    timeout preference of up to 60 s) raise the budget by the same amount.
+    """
+    headroom = DEFAULT_BUDGETS_S[step_id] - WORST_CASE_S[step_id]
+    return max(DEFAULT_BUDGETS_S[step_id], worst_case_s + headroom)
+
+
+def ping_worst_case(count: int, timeout_s: float) -> float:
+    """connectivity.ping: its subprocess timeout."""
+    return timeout_s + count + 5
+
+
+def mtu_worst_case(min_size: int, max_size: int, timeout_s: float = 3) -> float:
+    """mtu.estimate_path_mtu: binary-search probes, each with a (timeout + 2) s subprocess timeout."""
+    probes = max(1, math.ceil(math.log2(max(1, max_size - min_size + 2))))
+    return probes * (timeout_s + 2)
