@@ -318,7 +318,7 @@ class MainWindow(QMainWindow):
 
     def _on_cancel(self) -> None:
         if self._worker is not None:
-            self._append_log("Cancellation requested — applies after the current test step.")
+            self._append_log("Cancellation requested — stopping the running tests…")
             self._worker.cancel()
             self.btn_cancel.setEnabled(False)
 
@@ -389,10 +389,12 @@ class MainWindow(QMainWindow):
             worker.cancel()
             if not worker.wait(2000):
                 # Never destroy a QThread that is still running (Qt aborts the
-                # process). Close again once the current test step returns.
+                # process). Cancellation kills running commands at once, but a
+                # network check can take a moment to time out: close again when
+                # the worker has finished.
                 self._close_pending = True
                 self._status_dot.setText("● Closing…")
-                self._append_log("Waiting for the current test step to finish before exiting…")
+                self._append_log("Waiting for the running tests to stop before exiting…")
                 central = self.centralWidget()
                 if central is not None:
                     central.setEnabled(False)

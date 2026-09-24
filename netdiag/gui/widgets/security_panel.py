@@ -95,22 +95,24 @@ class SecurityPanel(QWidget):
         scroll.setWidget(self._container)
         layout.addWidget(scroll, stretch=1)
 
-        self._findings: list[SecurityFinding] = []
+        self._findings: list[SecurityFinding] = []   # in display order
+        self._orders: list[int | None] = []          # plan positions, parallel to _findings
 
     # -- API -------------------------------------------------------------
     def set_theme(self, theme: str) -> None:
         """Re-render all finding cards with the new theme colors."""
         self._theme = theme
-        findings = self._findings
+        entries = list(zip(self._findings, self._orders))
         self.clear()
-        for finding in findings:
-            self.add_finding(finding)
+        for finding, order in entries:
+            self.add_finding(finding, order)
 
     def begin_run(self) -> None:
         self.clear()
 
     def clear(self) -> None:
         self._findings = []
+        self._orders = []
         while self._list_layout.count() > 1:
             item = self._list_layout.takeAt(0)
             widget = item.widget() if item is not None else None
@@ -118,11 +120,19 @@ class SecurityPanel(QWidget):
                 widget.deleteLater()
         self.count_label.setText("No security results yet.")
 
-    def add_finding(self, finding: SecurityFinding) -> None:
-        self._findings.append(finding)
+    def add_finding(self, finding: SecurityFinding, order: int | None = None) -> None:
+        """Add a finding card. `order` (its position in the scan plan) keeps cards in
+        plan order although parallel checks finish in any order; without it the
+        card is appended."""
+        index = len(self._findings)
+        if order is not None:
+            index = next((i for i, existing in enumerate(self._orders)
+                          if existing is not None and existing > order), index)
+        self._findings.insert(index, finding)
+        self._orders.insert(index, order)
         card = _FindingCard(finding, self._theme)
-        # insert before the trailing stretch
-        self._list_layout.insertWidget(self._list_layout.count() - 1, card)
+        # cards occupy layout slots 0..n-1, followed by the trailing stretch
+        self._list_layout.insertWidget(index, card)
         self._update_count()
 
     def _update_count(self) -> None:

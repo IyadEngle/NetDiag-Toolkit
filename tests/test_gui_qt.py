@@ -263,26 +263,34 @@ class TestSafeShutdown:
 
 class TestPartialResultsOnCancel:
     def test_worker_emits_partial_report_on_cancel(self, qapp, sample_result):
-        from netdiag.gui.workers import ScanWorker
-        worker = ScanWorker("example.com", mode="diagnose", timeout=1)
+        from netdiag.gui import workers
+        from netdiag.runner import ScanPlan, Step
+
+        holder = {}
 
         def second_step():
-            worker.cancel()  # user presses Cancel while step 2 runs
+            holder["worker"].cancel()   # user presses Cancel while step 2 runs
             return sample_result
 
-        steps = [("one", lambda: sample_result), ("two", second_step), ("three", lambda: sample_result)]
+        plan = ScanPlan("example.com", [
+            Step("one", "One", "diagnostic", lambda: sample_result),
+            Step("two", "Two", "diagnostic", second_step, after=("one",)),
+            Step("three", "Three", "diagnostic", lambda: sample_result, after=("two",)),
+        ])
+        with patch.object(workers, "gui_plan", return_value=plan):
+            worker = workers.ScanWorker("example.com", mode="diagnose", timeout=1)
+        holder["worker"] = worker
         aborted, completed = [], []
         worker.aborted.connect(lambda msg, report: aborted.append((msg, report)))
         worker.completed.connect(completed.append)
-        with patch.object(ScanWorker, "_steps", return_value=steps):
-            worker.run()  # run synchronously in this thread
+        worker.run()  # run synchronously in this thread
 
         assert completed == []
         assert len(aborted) == 1
         message, report = aborted[0]
         assert "cancelled" in message.lower()
         assert report is worker.report
-        assert len(report.results) == 2        # step 3 never ran
+        assert len(report.results) == 2        # step 2 finished normally; step 3 never ran
 
     def test_main_window_keeps_partial_report_for_export(self, qapp, sample_result, sample_observation):
         from netdiag.gui.main_window import MainWindow

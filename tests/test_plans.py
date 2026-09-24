@@ -5,7 +5,8 @@
 Every diagnostic/security function is replaced by a fake that records its
 call and returns results whose evidence encodes all of its arguments (after
 applying the real signature's defaults). Each CLI command is run through the
-current CLI code and each GUI mode through the current ScanWorker; the
+CLI code and each GUI mode through ScanWorker (both on the runner since
+0.5; these checks were first run against the pre-runner code); the
 resulting reports must equal the report produced by running the equivalent
 plan through the runner, in parallel and sequentially.
 """
@@ -229,7 +230,7 @@ def qt():
 def run_gui_worker(mode: str, timeout: float):
     from netdiag.gui.workers import ScanWorker
     worker = ScanWorker(TARGET, mode=mode, timeout=timeout)
-    worker.run()          # synchronously, on this thread (the current sequential worker)
+    worker.run()          # synchronously, on this thread
     return worker
 
 
@@ -247,12 +248,25 @@ def test_gui_mode_parity(qt, mode, timeout, workers, monkeypatch):
     assert fakes.call_multiset() == expected_calls
 
 
+# Progress labels the GUI worker showed before it moved onto the runner (0.4.x).
+_GUI_DIAGNOSE_LABELS = ["DNS resolution", "ICMP ping", "HTTPS connectivity", "TCP port 80", "TCP port 443",
+                        "Default gateway"]
+_GUI_SECURITY_LABELS = ["TLS certificate expiry", "TLS protocol versions", "Certificate hostname",
+                        "HTTP security headers", "DNSSEC status", "Open resolver", "TCP exposure"]
+_GUI_LABELS = {
+    "diagnose": _GUI_DIAGNOSE_LABELS,
+    "security": _GUI_SECURITY_LABELS,
+    "full": _GUI_DIAGNOSE_LABELS + ["Path MTU", "Traceroute"] + _GUI_SECURITY_LABELS,
+}
+
+
 @pytest.mark.parametrize("mode", ["diagnose", "security", "full"])
 def test_gui_step_labels_and_counts_match(qt, mode):
     from netdiag.gui.workers import ScanWorker
     worker = ScanWorker(TARGET, mode=mode, timeout=5)
-    assert [label for label, _ in worker._steps()] == [s.label for s in gui_plan(TARGET, mode, 5).steps]
-    assert worker.total_steps == len(gui_plan(TARGET, mode, 5))
+    assert [s.label for s in worker.plan.steps] == _GUI_LABELS[mode]
+    assert worker.plan.step_ids == gui_plan(TARGET, mode, 5).step_ids
+    assert worker.total_steps == len(_GUI_LABELS[mode])
 
 
 # ---------------------------------------------------------------------------

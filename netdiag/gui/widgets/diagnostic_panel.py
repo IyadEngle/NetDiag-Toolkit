@@ -103,19 +103,32 @@ class DiagnosticPanel(QWidget):
         for card in self._cards.values():
             card.set_status("PENDING", "")
 
-    def add_diagnostic(self, result: DiagnosticResult) -> None:
-        self._append_row(result)
+    def add_diagnostic(self, result: DiagnosticResult, order: int | None = None) -> None:
+        """Add a result row. `order` (its position in the scan plan) keeps rows in
+        plan order although parallel steps finish in any order; without it the
+        row is appended."""
+        self._append_row(result, order)
         key = _card_key_for(result)
         if key:
             self._cards[key].set_status(result.status.value, result.evidence)
 
     # -- internals -----------------------------------------------------------
-    def _append_row(self, result: DiagnosticResult) -> None:
+    def _row_for(self, order: int | None) -> int:
+        if order is not None:
+            for row in range(self.table.rowCount()):
+                item = self.table.item(row, 0)
+                existing = item.data(Qt.ItemDataRole.UserRole) if item is not None else None
+                if existing is not None and existing > order:
+                    return row
+        return self.table.rowCount()
+
+    def _append_row(self, result: DiagnosticResult, order: int | None = None) -> None:
         fg, bg = status_colors(result.status.value, self._theme)
-        row = self.table.rowCount()
+        row = self._row_for(order)
         self.table.insertRow(row)
 
         status_item = QTableWidgetItem(result.status.value)
+        status_item.setData(Qt.ItemDataRole.UserRole, order)
         status_item.setForeground(QBrush(QColor(fg)))
         status_item.setBackground(QBrush(QColor(bg)))
         status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
