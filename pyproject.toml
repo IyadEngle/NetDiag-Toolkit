@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "netdiag-toolkit"
-version = "0.4.0b0"
+version = "0.5.0b0"
 description = "Advanced Network Diagnostics & Security Audit Toolkit"
 readme = "README.md"
 license = { text = "MIT" }

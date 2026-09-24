@@ -4,12 +4,12 @@
 
 Copyright (c) 2026 Iyad Engle
 
-![Version](https://img.shields.io/badge/version-0.4.0--beta-orange)
+![Version](https://img.shields.io/badge/version-0.5.0--beta-orange)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%2F%2011-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-> ⚠️ **Beta release.** `0.4.0b0` adds a lightweight PySide6 GUI on top of the existing `0.3.0` diagnostics, security audit, reporting, and CLI core. The GUI is a frontend over the existing logic; it does not duplicate diagnostic checks.
+> ⚠️ **Beta release.** `0.5.0b0` moves the CLI and the PySide6 GUI onto one shared scan runner: both build the same scan plan, run independent checks in parallel, support real cancellation, and reuse DNS and TLS results within a scan. Diagnostics, security checks, result models and status semantics are unchanged.
 
 ---
 
@@ -22,7 +22,7 @@ Copyright (c) 2026 Iyad Engle
 | Backends | `netdiag.core` / `netdiag.security` | Same modules and result models |
 | Reports | Console / JSON / CSV / HTML | JSON / CSV / HTML via file dialogs |
 
-The GUI and CLI share the same core diagnostics and security audit implementations.
+The GUI and CLI share the same core diagnostics and security audit implementations, and the same scan plans and runner (see [How scans run](#how-scans-run)).
 
 ## GUI
 
@@ -39,7 +39,7 @@ The GUI is a native PySide6 desktop application. It does not use Electron or a b
 - Security findings panel
 - PASS / FAIL / OBSERVATION / SKIP / ERROR / INCONCLUSIVE status semantics
 - Background workers so the window remains responsive
-- Cooperative cancellation between test steps
+- Immediate cancellation: running commands (`ping`, `tracert`, …) are stopped and completed results are kept
 - JSON / CSV / HTML export using the existing report exporters
 - Activity log
 - Preferences for timeout, default target, theme, log level, and report directory
@@ -48,7 +48,7 @@ The GUI is a native PySide6 desktop application. It does not use Electron or a b
 
 ### GUI limitations
 
-Cancellation is cooperative. A currently running system subprocess such as `ping` or `tracert` finishes before cancellation is applied.
+Independent checks run in parallel, so the activity log numbers steps in the order they start; the results table and findings panel always show results in the scan's fixed order.
 
 Wi-Fi and adapter details remain available through the CLI; they are not duplicated into the current GUI dashboard.
 
@@ -314,6 +314,7 @@ Exit codes are bit flags, so scripts and CI jobs can test each condition:
 | `2` | Usage error (invalid or missing options) |
 | `4` | One or more security findings with status `FAIL` |
 | `5` | Both `1` and `4` |
+| `130` | Interrupted with Ctrl+C; the partial report is still printed |
 
 `WARN`, `SKIP`, `OBSERVATION` and `INCONCLUSIVE` results do not change the exit code.
 Diagnostics report `WARN` for partial packet loss and for a traceroute that does not
@@ -323,6 +324,36 @@ Wi-Fi (`--wifi`, `full`, `network`) is `SKIP` when it does not apply: no wireles
 interface, WLAN service not running, or an adapter that is not connected (for example
 a machine on Ethernet). It is `WARN` while an adapter is still connecting or when its
 state cannot be read, so it never fails a run on its own.
+
+## Progress and Ctrl+C
+
+When stderr is an interactive terminal, the CLI shows a single progress line
+(`[finished/total] <running check>…`) that is erased before the report is printed.
+Piped or redirected output contains no progress output.
+
+Ctrl+C cancels the scan cleanly: running commands are stopped, the report of the
+checks that completed is printed with the requested reporter (or written to
+`--output`), stderr says `Interrupted: partial results (N of M steps completed).`,
+and the exit code is `130`.
+
+## How scans run
+
+Every CLI command and GUI mode builds a scan plan (`netdiag/runner/plans.py`) and runs
+it on the shared scan runner (`netdiag/runner/`):
+
+- **Parallel with rules**: up to 4 checks run at once. DNS resolution runs first for
+  the checks that reuse its result; ping, path MTU and traceroute never overlap (so
+  they cannot distort each other's measurements); the TLS checks run one at a time.
+- **Report order is fixed**: results are reported in the plan's order, whichever
+  check finishes first.
+- **Time budgets**: each check has a budget above its own worst-case timeouts; a
+  check that exceeds it is stopped and reported as `ERROR` (`StepTimeout`).
+- **Reuse within a scan**: the address resolved by the DNS check is reused for TCP,
+  TLS, ping, MTU and traceroute connections (reports, TLS SNI and certificate
+  hostname checks keep the hostname), and one TLS certificate handshake is shared
+  by the TLS checks.
+- **Diagnostic functions are unchanged**: called directly (outside a scan) they
+  behave exactly as before.
 
 ---
 
@@ -460,6 +491,7 @@ NetDiag-Toolkit/
 │   ├── gui/
 │   │   ├── widgets/
 │   │   └── resources/
+│   ├── runner/        # shared scan plans, runner, events, budgets
 │   └── utils/
 ├── tests/
 ├── .github/
@@ -564,7 +596,6 @@ The PowerShell script is Windows-only and does not require the optional PySide6 
 - Windows is the primary target
 - Linux support has platform-specific limitations
 - macOS is not currently supported
-- GUI cancellation applies between test steps
 - GUI does not currently duplicate adapter/Wi-Fi details
 - IPv6 targets are rejected by GUI validation
 - Path MTU depends on ICMP/DF behavior
@@ -572,7 +603,7 @@ The PowerShell script is Windows-only and does not require the optional PySide6 
 - TCP connectivity is a TCP connect test, not a vulnerability assessment
 - No dedicated IPv6 diagnostic workflow
 - Linux GUI desktop behavior is less validated than Windows
-- A full Windows GUI smoke test should be completed before calling `0.4.0b0` production-ready
+- A full Windows GUI smoke test should be completed before calling `0.5.0b0` production-ready
 
 ---
 

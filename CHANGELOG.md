@@ -2,7 +2,44 @@
 
 Copyright (c) 2026 Iyad Engle
 
-## [Unreleased] - 0.4.1
+## [0.5.0b0] - 2026-09-24
+
+Beta. The CLI and GUI now run every scan through one shared scan runner.
+Diagnostic and security checks, result models and status semantics are
+unchanged; piped or redirected CLI output is byte-identical to 0.4.x apart
+from the version string and the new exit code 130 in `--help`. Also includes
+the correctness and hygiene fixes originally planned as 0.4.1.
+
+### Added
+- Shared scan architecture (`netdiag/runner/`):
+  - `build_plan()` and per-command plans: the single definition of every scan
+    step, used by both the CLI and the GUI (two presentation profiles keep
+    their existing ordering, labels and timeouts)
+  - `ScanRunner`: runs up to 4 checks in parallel with dependencies and lanes
+    (DNS first where its result is reused; ping/MTU/traceroute never overlap;
+    TLS checks serialized), reports results in plan order, and delivers
+    progress events from a single thread
+  - per-check time budgets (above each check's worst-case timeouts, scaled
+    with the probe timeout); an overrunning check is stopped and reported as
+    `ERROR` with `StepTimeout`
+  - real cancellation: running system commands (ping, tracert, dig, netsh …)
+    are terminated, including their child processes on POSIX
+- Reuse within a scan: the DNS check's address is reused for TCP, TLS, ping,
+  MTU and traceroute connections (hostname kept for reports, TLS SNI and
+  certificate verification); one TLS certificate handshake is shared by the
+  TLS checks (2-3 fewer connections per audit)
+- CLI progress line on stderr when it is an interactive terminal
+- CLI Ctrl+C: clean cancellation, partial report printed, exit code `130`
+- GUI hides console windows of the commands it runs (Windows)
+- Pester tests for `NetDiag.ps1` in CI
+
+### Changed
+- `full` and `report` run diagnostics and the security audit as one parallel plan
+- GUI scans run on the shared runner; results appear as soon as they are
+  produced and are shown in the scan's fixed order; Cancel and closing the
+  window stop running commands immediately instead of after the current step
+- Errors from a crashed or timed-out check use the check's real test name
+- Version 0.5.0b0
 
 ### Fixed
 - Linux path MTU estimate was 28 bytes too high (a 1500-byte path reported 1528)
@@ -15,7 +52,7 @@ Copyright (c) 2026 Iyad Engle
   are now checked at their zone apex
 - Sockets were not closed when connect or the TLS handshake raised
 - GUI: closing the window during a scan could destroy a running QThread; close now waits
-  for the current step to finish
+  for the scan to stop
 - GUI: cancelling a scan discarded completed results; partial results are kept and exportable
 - Wi-Fi: a machine without an active Wi-Fi connection (e.g. on Ethernet) made `full`
   and `diagnose --wifi` exit 1; "not applicable" is now `SKIP`, in-progress/unreadable is `WARN`

@@ -106,8 +106,8 @@ class TestStylesheet:
 
 
 class TestCLIGuiSeparation:
-    def test_version_is_0_4_dev(self):
-        assert netdiag.__version__ == "0.4.0b0"
+    def test_version_is_0_5_beta(self):
+        assert netdiag.__version__ == "0.5.0b0"
 
     def test_scan_report_uses_package_version(self):
         from netdiag.utils.models import ScanReport
