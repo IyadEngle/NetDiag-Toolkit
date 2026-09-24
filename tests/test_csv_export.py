@@ -2,6 +2,7 @@
 
 import csv
 import io
+
 from netdiag.reports.csv_report import export_csv
 
 

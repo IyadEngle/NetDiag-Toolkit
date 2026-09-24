@@ -6,9 +6,9 @@
 from __future__ import annotations
 
 import platform
-import subprocess
 import time
 
+from netdiag.utils import process
 from netdiag.utils.models import DiagnosticResult, Status
 
 
@@ -24,13 +24,15 @@ def estimate_path_mtu(
             evidence=f"MTU discovery not supported on {os_name}", duration_ms=0,
         )
 
+    # `size` is the ICMP payload on both platforms (Windows -l, Linux -s);
+    # the path MTU estimate adds the 28-byte IPv4 + ICMP header overhead once.
     def _try_size(size: int) -> bool:
         try:
             if os_name == "Windows":
                 cmd = ["ping", "-n", "1", "-f", "-l", str(size), "-w", str(timeout_seconds * 1000), target]
             else:
-                cmd = ["ping", "-c", "1", "-M", "do", "-s", str(size - 28), "-W", str(timeout_seconds), target]
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_seconds + 2)
+                cmd = ["ping", "-c", "1", "-M", "do", "-s", str(size), "-W", str(timeout_seconds), target]
+            proc = process.run(cmd, capture_output=True, text=True, timeout=timeout_seconds + 2)
             output = proc.stdout.lower()
             if os_name == "Windows":
                 return "ttl=" in output

@@ -8,10 +8,10 @@ Advanced Network Diagnostics & Security Audit Toolkit
 Author: Iyad Engle
 License: MIT
 
-0.4.0b0 is a beta release: it adds the PySide6 GUI on top of the
-unchanged 0.3.0 CLI and diagnostic/security core.
+0.5.0b0 is a beta release: the CLI and GUI run every scan through one
+shared scan runner (netdiag.runner) on top of the diagnostic/security core.
 """
 
-__version__ = "0.4.0b0"
+__version__ = "0.5.0b0"
 __author__ = "Iyad Engle"
 __license__ = "MIT"

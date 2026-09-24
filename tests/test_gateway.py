@@ -1,17 +1,17 @@
 # Copyright (c) 2026 Iyad Engle. All rights reserved.
 
 import ipaddress
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from netdiag.core.gateway import get_default_gateway, gateway_diagnostics
+from netdiag.core.gateway import gateway_diagnostics, get_default_gateway
 from netdiag.utils.models import Status
 
 
 class TestGatewayUnit:
     @patch('netdiag.core.gateway.platform.system', return_value="Windows")
-    @patch('netdiag.core.gateway.subprocess.run')
+    @patch('netdiag.core.gateway.process.run')
     def test_windows_gateway(self, mock_run, mock_os):
         mock_run.return_value = MagicMock(
             stdout="Network Destination        Netmask          Gateway\n          0.0.0.0          0.0.0.0     192.168.1.1"

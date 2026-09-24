@@ -22,6 +22,10 @@
 
 .EXAMPLE
     .\NetDiag.ps1 -DnsServers 1.1.1.1,8.8.8.8 -DnsQuery cloudflare.com
+
+.NOTES
+    Copyright (c) 2026 Iyad Engle. Licensed under the MIT License.
+    https://github.com/IyadEngle/NetDiag-Toolkit
 #>
 
 [CmdletBinding()]
@@ -46,15 +50,42 @@ param(
 
 $ErrorActionPreference = "Continue"
 
+function Get-ND-PingLatency {
+    # Returns the round-trip time in ms of a successful echo reply, or $null.
+    # Windows PowerShell 5.1 returns Win32_PingStatus (StatusCode, ResponseTime);
+    # PowerShell 7 returns PingStatus (Status, Latency) and has no ResponseTime.
+    param($Reply)
+
+    if ($null -eq $Reply) { return $null }
+    $props = $Reply.PSObject.Properties
+
+    if ($props["Status"] -and $props["Latency"]) {
+        if ("$($Reply.Status)" -ne "Success") { return $null }
+        return [double]$Reply.Latency
+    }
+
+    if ($props["StatusCode"]) {
+        # Non-zero StatusCode = timeout, destination unreachable, etc.
+        if ($null -eq $Reply.StatusCode -or [int]$Reply.StatusCode -ne 0) { return $null }
+    }
+
+    if ($props["ResponseTime"] -and $null -ne $Reply.ResponseTime) {
+        return [double]$Reply.ResponseTime
+    }
+    return $null
+}
+
 function Test-ND-Ping {
     param([string]$ComputerName, [int]$Count)
 
     $samples = @()
     try {
-        $replies = Test-Connection -ComputerName $ComputerName -Count $Count -ErrorAction Stop
+        # SilentlyContinue: one lost probe must not discard the replies that arrived.
+        $replies = @(Test-Connection -ComputerName $ComputerName -Count $Count -ErrorAction SilentlyContinue)
         foreach ($r in $replies) {
-            if ($null -ne $r.ResponseTime) {
-                $samples += [double]$r.ResponseTime
+            $latency = Get-ND-PingLatency -Reply $r
+            if ($null -ne $latency) {
+                $samples += $latency
             }
         }
     } catch {}
@@ -426,6 +457,11 @@ function Export-ND-Csv {
     }
 
     $rows | Export-Csv -Path $Path -NoTypeInformation -Encoding UTF8
+}
+
+# When dot-sourced (e.g. by the Pester tests), load the functions only.
+if ($MyInvocation.InvocationName -eq ".") {
+    return
 }
 
 Write-Host ""

@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Iyad Engle. All rights reserved.
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from netdiag.network.discovery import port_scan
 from netdiag.utils.models import Status

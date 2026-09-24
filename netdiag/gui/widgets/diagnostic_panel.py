@@ -74,19 +74,19 @@ class DiagnosticPanel(QWidget):
         # -- results table ----------------------------------------------------
         self.table = QTableWidget(0, 5)
         self.table.setHorizontalHeaderLabels(["Status", "Test", "Target", "Duration", "Evidence"])
-        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
+        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         self.table.setColumnWidth(0, 100)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Fixed)
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
         self.table.setColumnWidth(1, 170)
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Fixed)
+        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
         self.table.setColumnWidth(2, 150)
-        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Fixed)
+        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
         self.table.setColumnWidth(3, 85)
         self.table.verticalHeader().setVisible(False)
         self.table.setAlternatingRowColors(True)
-        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         layout.addWidget(self.table, stretch=1)
 
     # -- API -------------------------------------------------------------
@@ -103,22 +103,35 @@ class DiagnosticPanel(QWidget):
         for card in self._cards.values():
             card.set_status("PENDING", "")
 
-    def add_diagnostic(self, result: DiagnosticResult) -> None:
-        self._append_row(result)
+    def add_diagnostic(self, result: DiagnosticResult, order: int | None = None) -> None:
+        """Add a result row. `order` (its position in the scan plan) keeps rows in
+        plan order although parallel steps finish in any order; without it the
+        row is appended."""
+        self._append_row(result, order)
         key = _card_key_for(result)
         if key:
             self._cards[key].set_status(result.status.value, result.evidence)
 
     # -- internals -----------------------------------------------------------
-    def _append_row(self, result: DiagnosticResult) -> None:
+    def _row_for(self, order: int | None) -> int:
+        if order is not None:
+            for row in range(self.table.rowCount()):
+                item = self.table.item(row, 0)
+                existing = item.data(Qt.ItemDataRole.UserRole) if item is not None else None
+                if existing is not None and existing > order:
+                    return row
+        return self.table.rowCount()
+
+    def _append_row(self, result: DiagnosticResult, order: int | None = None) -> None:
         fg, bg = status_colors(result.status.value, self._theme)
-        row = self.table.rowCount()
+        row = self._row_for(order)
         self.table.insertRow(row)
 
         status_item = QTableWidgetItem(result.status.value)
+        status_item.setData(Qt.ItemDataRole.UserRole, order)
         status_item.setForeground(QBrush(QColor(fg)))
         status_item.setBackground(QBrush(QColor(bg)))
-        status_item.setTextAlignment(Qt.AlignCenter)
+        status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.table.setItem(row, 0, status_item)
 
         self.table.setItem(row, 1, QTableWidgetItem(result.test_name))

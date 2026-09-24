@@ -1,6 +1,7 @@
 # Copyright (c) 2026 Iyad Engle. All rights reserved.
 
 import pytest
+
 from netdiag.network.adapters import adapter_info
 from netdiag.utils.models import Status
 

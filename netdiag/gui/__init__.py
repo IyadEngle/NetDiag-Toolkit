@@ -9,4 +9,4 @@ CLI and unit tests are unaffected. Qt imports happen only inside app.py,
 main_window.py, workers.py, and the widget modules.
 """
 
-GUI_VERSION = "0.4.0b0"
+GUI_VERSION = "0.5.0b0"

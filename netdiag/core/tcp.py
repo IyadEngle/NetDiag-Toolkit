@@ -6,9 +6,11 @@
 from __future__ import annotations
 
 import concurrent.futures
+import contextvars
 import socket
 import time
 
+from netdiag.utils.execution import connect_host
 from netdiag.utils.models import DiagnosticResult, Status
 
 
@@ -17,10 +19,13 @@ def tcp_connect(host: str, port: int, timeout_seconds: float = 5.0) -> Diagnosti
     target = f"{host}:{port}"
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(timeout_seconds)
-        result = sock.connect_ex((host, port))
+        try:
+            sock.settimeout(timeout_seconds)
+            # Connect to the address resolved earlier in the scan (if any); `target` keeps the name.
+            result = sock.connect_ex((connect_host(host), port))
+        finally:
+            sock.close()
         duration_ms = (time.monotonic() - start) * 1000
-        sock.close()
 
         if result == 0:
             return DiagnosticResult(
@@ -60,7 +65,11 @@ def tcp_multi_port(
 ) -> list[DiagnosticResult]:
     results = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_concurrent) as executor:
-        future_to_port = {executor.submit(tcp_connect, host, p, timeout_seconds): p for p in ports}
+        # One context copy per task so an active scan scope reaches the pool threads.
+        future_to_port = {
+            executor.submit(contextvars.copy_context().run, tcp_connect, host, p, timeout_seconds): p
+            for p in ports
+        }
         for future in concurrent.futures.as_completed(future_to_port):
             try:
                 results.append(future.result())

@@ -1,10 +1,13 @@
+# Copyright (c) 2026 Iyad Engle. All rights reserved.
+# Licensed under the MIT License. See LICENSE file for details.
+
 [build-system]
 requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "netdiag-toolkit"
-version = "0.4.0b0"
+version = "0.5.0b0"
 description = "Advanced Network Diagnostics & Security Audit Toolkit"
 readme = "README.md"
 license = { text = "MIT" }

@@ -106,8 +106,8 @@ class TestStylesheet:
 
 
 class TestCLIGuiSeparation:
-    def test_version_is_0_4_dev(self):
-        assert netdiag.__version__ == "0.4.0b0"
+    def test_version_is_0_5_beta(self):
+        assert netdiag.__version__ == "0.5.0b0"
 
     def test_scan_report_uses_package_version(self):
         from netdiag.utils.models import ScanReport
@@ -122,3 +122,13 @@ class TestGuiResources:
         assert (resources / "app.png").is_file()
         assert (resources / "app.ico").stat().st_size > 0
         assert (resources / "app.png").stat().st_size > 0
+
+
+class TestSharedValidationInGui:
+    def test_invalid_ipv4_rejected(self):
+        ok, msg = validate_target("1.2.3.999")
+        assert not ok and "IPv4" in msg
+
+    def test_bracketed_ipv6_rejected_as_not_yet_supported(self):
+        ok, msg = validate_target("[2001:db8::1]")
+        assert not ok and "not supported yet" in msg

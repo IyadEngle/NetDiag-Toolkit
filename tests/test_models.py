@@ -1,8 +1,11 @@
 # Copyright (c) 2026 Iyad Engle. All rights reserved.
 
 from netdiag.utils.models import (
-    Confidence, DiagnosticResult, ScanReport,
-    SecurityFinding, SecurityStatus, Severity, Status,
+    Confidence,
+    ScanReport,
+    SecurityFinding,
+    SecurityStatus,
+    Severity,
 )
 
 

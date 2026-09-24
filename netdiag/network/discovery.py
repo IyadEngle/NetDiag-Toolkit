@@ -6,11 +6,13 @@
 from __future__ import annotations
 
 import concurrent.futures
+import contextvars
 import ipaddress
 import socket
-import subprocess
 import time
 
+from netdiag.utils import process
+from netdiag.utils.execution import connect_host
 from netdiag.utils.models import DiagnosticResult, Status
 
 COMMON_PORTS = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 993, 995, 3306, 3389, 5900, 8080]
@@ -36,9 +38,11 @@ def port_scan(
     def _check_port(port: int) -> tuple[int, str]:
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(timeout_seconds)
-            result = sock.connect_ex((target, port))
-            sock.close()
+            try:
+                sock.settimeout(timeout_seconds)
+                result = sock.connect_ex((connect_host(target), port))
+            finally:
+                sock.close()
             if result == 0:
                 return port, "OPEN"
             elif result in (10061, 111):
@@ -48,7 +52,9 @@ def port_scan(
             return port, "FILTERED"
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_concurrent) as executor:
-        states = list(executor.map(_check_port, ports))
+        # One context copy per task so an active scan scope reaches the pool threads.
+        futures = [executor.submit(contextvars.copy_context().run, _check_port, port) for port in ports]
+        states = [future.result() for future in futures]
 
     for port, state in states:
         if state == "OPEN":
@@ -94,7 +100,7 @@ def host_discovery(
                 cmd = ["ping", "-c", "1", "-W", str(timeout_seconds), ip]
             else:
                 return None
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_seconds + 2)
+            proc = process.run(cmd, capture_output=True, text=True, timeout=timeout_seconds + 2)
             output = proc.stdout.lower()
             if "ttl=" in output or "1 received" in output:
                 return ip
@@ -102,8 +108,12 @@ def host_discovery(
         except Exception:
             return None
 
+    # Each probe runs in a copy of the caller's context so an active scan scope
+    # (cancellation, time budget) reaches the pings started from pool threads.
+    # A Context can only be entered by one thread at a time, hence one copy per probe.
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_concurrent) as executor:
-        results = list(executor.map(_check_host, all_ips))
+        futures = [executor.submit(contextvars.copy_context().run, _check_host, ip) for ip in all_ips]
+        results = [future.result() for future in futures]
 
     active = [ip for ip in results if ip is not None]
     duration_ms = (time.monotonic() - start) * 1000

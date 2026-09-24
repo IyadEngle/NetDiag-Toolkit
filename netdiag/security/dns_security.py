@@ -8,15 +8,57 @@ DNSSEC not detected → OBSERVATION. Open resolver → FAIL (security condition)
 
 from __future__ import annotations
 
+import ipaddress
 import logging
+import socket
 import subprocess
 
+from netdiag.utils import process
 from netdiag.utils.models import Confidence, SecurityFinding, SecurityStatus, Severity
 
 logger = logging.getLogger("netdiag.security.dns_security")
 
 
+_DNSSEC_RESOLVER = "8.8.8.8"
+
+
+def _find_zone_apex(target: str, timeout: int = 10) -> str | None:
+    """Return the zone apex (e.g. "example.com") that contains `target`, or None."""
+    import dns.name
+    import dns.resolver
+
+    resolver = dns.resolver.Resolver(configure=False)
+    resolver.nameservers = [_DNSSEC_RESOLVER]
+    resolver.timeout = timeout
+    resolver.lifetime = timeout
+    try:
+        zone = dns.resolver.zone_for_name(target, resolver=resolver)
+    except Exception as e:
+        logger.debug("zone apex lookup for %s failed: %s", target, e)
+        return None
+    if zone == dns.name.root:
+        return None
+    return zone.to_text(omit_final_dot=True)
+
+
 def _dnssec_check_dnspython(target: str, timeout: int = 10) -> tuple[str, str]:
+    """DNSKEY lookup for `target`; DNSKEY records only exist at a zone apex,
+    so a name without them is re-checked at the apex of its enclosing zone."""
+    status, evidence = _dnskey_query(target, timeout)
+    if status != "NOT_DETECTED":
+        return status, evidence
+
+    apex = _find_zone_apex(target, timeout)
+    if apex is None:
+        return "INCONCLUSIVE", f"{evidence}; could not determine the zone apex for {target}"
+    if apex.rstrip(".").lower() == target.rstrip(".").lower():
+        return status, evidence
+
+    apex_status, apex_evidence = _dnskey_query(apex, timeout)
+    return apex_status, f"{target} is in zone {apex}: {apex_evidence}"
+
+
+def _dnskey_query(target: str, timeout: int = 10) -> tuple[str, str]:
     import dns.exception
     import dns.message
     import dns.name
@@ -27,7 +69,7 @@ def _dnssec_check_dnspython(target: str, timeout: int = 10) -> tuple[str, str]:
 
     try:
         query = dns.message.make_query(target, dns.rdatatype.DNSKEY, dns.rdataclass.IN, want_dnssec=True)
-        response = dns.query.udp(query, "8.8.8.8", timeout=timeout)
+        response = dns.query.udp(query, _DNSSEC_RESOLVER, timeout=timeout)
         rcode = response.rcode()
 
         if rcode == dns.rcode.NOERROR:
@@ -57,7 +99,7 @@ def _dnssec_check_dnspython(target: str, timeout: int = 10) -> tuple[str, str]:
 
 def _dnssec_check_dig(target: str, timeout: int = 10) -> tuple[str, str]:
     try:
-        result = subprocess.run(["dig", "DNSKEY", target, "+short"], capture_output=True, text=True, timeout=timeout)
+        result = process.run(["dig", "DNSKEY", target, "+short"], capture_output=True, text=True, timeout=timeout)
         if result.returncode == 0:
             if result.stdout.strip():
                 return "KEYS_DETECTED", f"Found DNSKEY records for {target}"
@@ -120,13 +162,36 @@ def check_dnssec(target: str, timeout: int = 10) -> list[SecurityFinding]:
     return findings
 
 
+def _resolve_server_ip(target: str) -> str | None:
+    """dnspython needs a nameserver IP: return `target` if it is one, else resolve it."""
+    try:
+        ipaddress.ip_address(target)
+        return target
+    except ValueError:
+        pass
+    try:
+        infos = socket.getaddrinfo(target, 53, socket.AF_INET, socket.SOCK_DGRAM)
+    except (socket.gaierror, UnicodeError):
+        return None
+    for info in infos:
+        address = info[4][0]
+        if isinstance(address, str):
+            return address
+    return None
+
+
 def _open_resolver_check_dnspython(target: str, timeout: int = 5) -> tuple:
     import dns.exception
     import dns.resolver
 
     try:
+        server_ip = _resolve_server_ip(target)
+        if server_ip is None:
+            return None, f"Could not resolve {target} to an IPv4 address"
+        if server_ip != target:
+            target = f"{target} ({server_ip})"
         resolver = dns.resolver.Resolver(configure=False)
-        resolver.nameservers = [target]
+        resolver.nameservers = [server_ip]
         resolver.timeout = timeout
         resolver.lifetime = timeout
         try:
@@ -151,8 +216,8 @@ def _open_resolver_check_dnspython(target: str, timeout: int = 5) -> tuple:
 
 def _open_resolver_check_dig(target: str, timeout: int = 5) -> tuple:
     try:
-        result = subprocess.run(["dig", f"@{target}", "example.com", "+time=3", "+tries=1"],
-                                capture_output=True, text=True, timeout=timeout)
+        result = process.run(["dig", f"@{target}", "example.com", "+time=3", "+tries=1"],
+                             capture_output=True, text=True, timeout=timeout)
         if result.returncode == 0 and "ANSWER SECTION" in result.stdout:
             return True, f"dig @{target} returned ANSWER SECTION"
         return False, f"Server did not return an answer (exit code: {result.returncode})"

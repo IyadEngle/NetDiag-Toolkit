@@ -1,8 +1,14 @@
+# Copyright (c) 2026 Iyad Engle. All rights reserved.
+# Licensed under the MIT License. See LICENSE file for details.
+
 name: PowerShell checks
 
 on:
   push:
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   syntax:
@@ -28,3 +34,21 @@ jobs:
           }
 
           Write-Host "PowerShell syntax check passed."
+
+  pester:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Pester tests
+        shell: pwsh
+        run: |
+          if (-not (Get-Module -ListAvailable Pester | Where-Object { $_.Version -ge [version]"5.0" })) {
+            Install-Module Pester -MinimumVersion 5.0 -Force -Scope CurrentUser -SkipPublisherCheck
+          }
+          Import-Module Pester -MinimumVersion 5.0
+          $config = New-PesterConfiguration
+          $config.Run.Path = "tests/powershell"
+          $config.Run.Exit = $true
+          $config.Output.Verbosity = "Detailed"
+          Invoke-Pester -Configuration $config

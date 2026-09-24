@@ -4,8 +4,13 @@
 import pytest
 
 from netdiag.utils.models import (
-    Confidence, DiagnosticResult, ScanReport,
-    SecurityFinding, SecurityStatus, Severity, Status,
+    Confidence,
+    DiagnosticResult,
+    ScanReport,
+    SecurityFinding,
+    SecurityStatus,
+    Severity,
+    Status,
 )
 
 

@@ -11,6 +11,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 
+from netdiag.utils import process
 from netdiag.utils.models import DiagnosticResult, Status
 
 
@@ -37,6 +38,13 @@ def _parse_windows_ping(output: str) -> PingResult:
         result.received = int(recv_match.group(1))
     if lost_match:
         result.lost = int(lost_match.group(1))
+    # Windows counts "Reply from <router>: Destination host unreachable." (and
+    # "TTL expired in transit.") as Received. Only echo replies carry "TTL=".
+    echo_replies = len(re.findall(r"TTL=\d+", output, re.IGNORECASE))
+    if result.received > echo_replies:
+        result.received = echo_replies
+        if result.sent > 0:
+            result.lost = result.sent - echo_replies
     if result.sent > 0:
         result.loss_percent = round((result.lost / result.sent) * 100, 1)
     times = re.findall(r"time[=<]\s*(\d+)ms", output)
@@ -82,14 +90,19 @@ def ping(target: str, count: int = 4, timeout_seconds: int = 10) -> DiagnosticRe
                 evidence=f"Ping not supported on {os_name}", duration_ms=0,
             )
 
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_seconds + count + 5)
+        proc = process.run(cmd, capture_output=True, text=True, timeout=timeout_seconds + count + 5)
         output = proc.stdout + proc.stderr
         duration_ms = (time.monotonic() - start) * 1000
 
         parsed = _parse_windows_ping(output) if os_name == "Windows" else _parse_linux_ping(output)
 
         if parsed.received > 0:
-            status = Status.PASS if parsed.loss_percent < 100 else Status.FAIL
+            if parsed.loss_percent <= 0:
+                status = Status.PASS
+            elif parsed.loss_percent < 100:
+                status = Status.WARN  # partial packet loss
+            else:
+                status = Status.FAIL
             evidence = (
                 f"Sent={parsed.sent} Received={parsed.received} Loss={parsed.loss_percent}% "
                 f"Min={parsed.min_ms}ms Avg={parsed.avg_ms}ms Max={parsed.max_ms}ms"

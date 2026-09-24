@@ -2,181 +2,96 @@
 # Licensed under the MIT License. See LICENSE file for details.
 
 """
-Background scan workers.
+Background scan worker.
 
-Runs the EXISTING netdiag diagnostic and security functions on a QThread
-and emits per-item results plus progress. Cancellation is cooperative:
-it takes effect between tests, after the currently running test finishes.
-A running subprocess (ping/tracert) cannot be aborted without rewriting
-stable diagnostics, which is out of scope.
+A thin Qt adapter over the shared scan runner: it runs the GUI profile of the
+shared scan plan (netdiag.runner.plans.gui_plan, the same step definitions the
+CLI uses) on ScanRunner inside a QThread and re-emits runner events as Qt
+signals. Steps run in parallel within the plan's dependency and lane rules.
+
+Cancellation is immediate: running system commands (ping, tracert, ...) are
+terminated, nothing new starts, and the partial report is delivered.
 """
 
 from __future__ import annotations
 
-import threading
-from collections.abc import Callable
-
 from PySide6.QtCore import QThread, Signal
 
-from netdiag.utils.models import (
-    Confidence,
-    DiagnosticResult,
-    ScanReport,
-    SecurityFinding,
-    SecurityStatus,
-    Severity,
-    Status,
+from netdiag.runner import (
+    CancelToken,
+    ResultProduced,
+    ScanEvent,
+    ScanPlan,
+    ScanRunner,
+    StepStarted,
 )
+from netdiag.runner.plans import gui_plan
+from netdiag.utils.models import DiagnosticResult, ScanReport
+
+# Order key = step position in the plan * stride + item position within the step,
+# so a step's several results (e.g. gateway detection + gateway ping) stay together.
+ORDER_STRIDE = 1000
 
 
 class ScanWorker(QThread):
     """Executes a diagnose / security / full scan plan against one target."""
 
     progress = Signal(str)
-    diagnostic_result = Signal(object)   # DiagnosticResult
-    security_finding = Signal(object)    # SecurityFinding
-    completed = Signal(object)           # ScanReport
-    aborted = Signal(str)
+    diagnostic_result = Signal(object, int)   # (DiagnosticResult, plan order key)
+    security_finding = Signal(object, int)    # (SecurityFinding, plan order key)
+    completed = Signal(object)                # ScanReport, in plan order
+    aborted = Signal(str, object)             # (message, partial ScanReport)
 
     def __init__(self, target: str, mode: str = "diagnose",
                  timeout: int = 5, parent=None) -> None:
         super().__init__(parent)
-        if mode not in ("diagnose", "security", "full"):
-            raise ValueError(f"Unknown scan mode: {mode}")
+        self._plan = gui_plan(target, mode, timeout)   # type: ignore[arg-type]  # validates mode
         self._target = target
         self._mode = mode
         self._timeout = timeout
-        self._cancel_event = threading.Event()
+        self._token = CancelToken()
+        self._step_index = {step.id: index for index, step in enumerate(self._plan.steps)}
+        self._items_emitted: dict[str, int] = {}
         self.report = ScanReport(target=target)
 
     # -- control ------------------------------------------------------------
     def cancel(self) -> None:
-        """Request cancellation. Takes effect after the current test step."""
-        self._cancel_event.set()
+        """Cancel the scan: running commands are stopped and nothing new starts."""
+        self._token.cancel()
 
     @property
     def cancelled(self) -> bool:
-        return self._cancel_event.is_set()
+        return self._token.cancelled
 
-    # -- plan -----------------------------------------------------------------
-    def _steps(self) -> list[tuple[str, Callable]]:
-        target, timeout = self._target, self._timeout
-        steps: list[tuple[str, Callable]] = []
-
-        if self._mode in ("diagnose", "full"):
-            from netdiag.core.connectivity import ping
-            from netdiag.core.dns import resolve_hostname
-            from netdiag.core.gateway import gateway_diagnostics
-            from netdiag.core.https import https_connectivity
-            from netdiag.core.tcp import tcp_connect
-
-            steps += [
-                ("DNS resolution",
-                 lambda: resolve_hostname(target)),
-                ("ICMP ping",
-                 lambda: ping(target, count=4, timeout_seconds=max(1, int(timeout)))),
-                ("HTTPS connectivity",
-                 lambda: https_connectivity(target, timeout_seconds=max(1, int(timeout)))),
-                ("TCP port 80",
-                 lambda: tcp_connect(target, 80, timeout_seconds=float(timeout))),
-                ("TCP port 443",
-                 lambda: tcp_connect(target, 443, timeout_seconds=float(timeout))),
-                ("Default gateway",
-                 gateway_diagnostics),
-            ]
-            if self._mode == "full":
-                from netdiag.core.mtu import estimate_path_mtu
-                from netdiag.core.traceroute import traceroute
-                steps += [
-                    ("Path MTU", lambda: estimate_path_mtu(target)),
-                    ("Traceroute", lambda: traceroute(target)),
-                ]
-
-        if self._mode in ("security", "full"):
-            from netdiag.security.dns_security import check_dnssec, check_open_resolver
-            from netdiag.security.exposure import check_tcp_exposure
-            from netdiag.security.http_security import check_http_security_headers
-            from netdiag.security.tls import (
-                check_certificate_expiry,
-                check_certificate_hostname,
-                check_tls_protocol_versions,
-            )
-
-            steps += [
-                ("TLS certificate expiry",
-                 lambda: check_certificate_expiry(target)),
-                ("TLS protocol versions",
-                 lambda: check_tls_protocol_versions(target)),
-                ("Certificate hostname",
-                 lambda: check_certificate_hostname(target)),
-                ("HTTP security headers",
-                 lambda: check_http_security_headers(target)),
-                ("DNSSEC status",
-                 lambda: check_dnssec(target)),
-                ("Open resolver",
-                 lambda: check_open_resolver(target)),
-                ("TCP exposure",
-                 lambda: check_tcp_exposure(target)),
-            ]
-
-        return steps
+    @property
+    def plan(self) -> ScanPlan:
+        return self._plan
 
     @property
     def total_steps(self) -> int:
-        return len(self._steps())
+        return len(self._plan)
 
     # -- execution ------------------------------------------------------------
     def run(self) -> None:  # noqa: D102 — QThread entry point
-        steps = self._steps()
-        total = len(steps)
+        runner = ScanRunner(hide_console_windows=True)   # no console window per ping/tracert
+        result = runner.run(self._plan, on_event=self._on_event, cancel_token=self._token)
+        self.report = result.report
+        if result.cancelled:
+            self.progress.emit("Scan cancelled.")
+            self.aborted.emit("Scan cancelled by user.", result.report)
+        else:
+            self.progress.emit("Scan complete.")
+            self.completed.emit(result.report)
 
-        for index, (label, func) in enumerate(steps, start=1):
-            if self._cancel_event.is_set():
-                self.progress.emit("Scan cancelled.")
-                self.aborted.emit("Scan cancelled by user.")
-                return
-
-            self.progress.emit(f"[{index}/{total}] {label}…")
-            try:
-                output = func()
-            except Exception as exc:  # defensive: never crash the scan loop
-                output = self._error_artifact(label, exc)
-
-            self._dispatch(output)
-
-        self.progress.emit("Scan complete.")
-        self.completed.emit(self.report)
-
-    # -- helpers ------------------------------------------------------------
-    def _test_slug(self, label: str) -> str:
-        return label.lower().replace(" ", "_").replace("…", "")
-
-    def _error_artifact(self, label: str, exc: Exception):
-        """Wrap an unexpected exception as an ERROR artifact of the right type."""
-        name = self._test_slug(label)
-        if self._mode == "security":
-            return SecurityFinding(
-                test_name=name, status=SecurityStatus.ERROR, severity=Severity.INFO,
-                title=f"{label}: Unexpected Error",
-                description="An unexpected error prevented this security check.",
-                evidence=f"{type(exc).__name__}: {exc}",
-                recommendation="Review logs for details.",
-                confidence=Confidence.INCONCLUSIVE,
-            )
-        return DiagnosticResult(
-            test_name=name, target=self._target, status=Status.ERROR,
-            evidence=f"Unexpected error: {exc}", duration_ms=0,
-            error=type(exc).__name__,
-        )
-
-    def _dispatch(self, output) -> None:
-        if output is None:
-            return
-        items = output if isinstance(output, (list, tuple)) else [output]
-        for item in items:
-            if isinstance(item, DiagnosticResult):
-                self.report.results.append(item)
-                self.diagnostic_result.emit(item)
-            elif isinstance(item, SecurityFinding):
-                self.report.findings.append(item)
-                self.security_finding.emit(item)
+    def _on_event(self, event: ScanEvent) -> None:
+        """Runner events arrive one at a time on this thread; signals queue to the GUI."""
+        if isinstance(event, StepStarted):
+            self.progress.emit(f"[{event.index}/{event.total}] {event.label}…")
+        elif isinstance(event, ResultProduced):
+            position = self._items_emitted.get(event.step_id, 0)
+            self._items_emitted[event.step_id] = position + 1
+            order = self._step_index[event.step_id] * ORDER_STRIDE + position
+            if isinstance(event.item, DiagnosticResult):
+                self.diagnostic_result.emit(event.item, order)
+            else:
+                self.security_finding.emit(event.item, order)

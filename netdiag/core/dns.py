@@ -5,10 +5,12 @@
 
 from __future__ import annotations
 
+import ipaddress
 import socket
-import subprocess
 import time
 
+from netdiag.utils import process
+from netdiag.utils.execution import remember_resolution
 from netdiag.utils.models import DiagnosticResult, Status
 
 
@@ -18,6 +20,10 @@ def resolve_hostname(target: str, dns_server: str | None = None) -> DiagnosticRe
         ips = socket.getaddrinfo(target, None, socket.AF_INET)
         duration_ms = (time.monotonic() - start) * 1000
         unique_ips = sorted({addr[4][0] for addr in ips if isinstance(addr[4][0], str)})
+        preferred = next((addr[4][0] for addr in ips if isinstance(addr[4][0], str)), None)
+        if preferred is not None:
+            # getaddrinfo order is the OS preference; later steps of a scan reuse it.
+            remember_resolution(target, preferred)
         return DiagnosticResult(
             test_name="dns_resolution", target=target, status=Status.PASS,
             evidence=f"Resolved to: {', '.join(unique_ips)}",
@@ -35,6 +41,45 @@ def resolve_hostname(target: str, dns_server: str | None = None) -> DiagnosticRe
             evidence=f"Unexpected error: {e}",
             duration_ms=(time.monotonic() - start) * 1000, error=type(e).__name__,
         )
+
+
+def _parse_nslookup_answers(output: str, server_ip: str) -> list[str]:
+    """Extract answer addresses (IPv4 and IPv6) from Windows nslookup output.
+
+    Handles single "Address:" lines and multi-line "Addresses:" blocks whose
+    continuation lines hold one bare address each.
+    """
+    ips: list[str] = []
+    in_answer = False
+    in_address_block = False
+    for raw_line in output.split("\n"):
+        line = raw_line.strip()
+        if line.startswith("Name:"):
+            in_answer = True
+            in_address_block = False
+            continue
+        if not in_answer or not line:
+            continue
+        if line.startswith("Address"):
+            # Split on the first colon only: IPv6 addresses contain colons.
+            candidate = line.split(":", 1)[1].strip()
+            in_address_block = True
+        elif in_address_block and _is_ip(line):
+            candidate = line
+        else:
+            in_address_block = False
+            continue
+        if candidate and candidate != server_ip:
+            ips.append(candidate)
+    return ips
+
+
+def _is_ip(value: str) -> bool:
+    try:
+        ipaddress.ip_address(value)
+    except ValueError:
+        return False
+    return True
 
 
 def compare_dns_servers(target: str) -> list[DiagnosticResult]:
@@ -61,23 +106,13 @@ def compare_dns_servers(target: str) -> list[DiagnosticResult]:
                     evidence=f"DNS comparison not supported on {os_name}", duration_ms=0,
                 ))
                 continue
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+            proc = process.run(cmd, capture_output=True, text=True, timeout=5)
             duration_ms = (time.monotonic() - start) * 1000
             output = proc.stdout.strip()
             if os_name == "Linux":
                 ips = [line.strip() for line in output.split("\n") if line.strip()]
             else:
-                ips = []
-                in_answer = False
-                for line in output.split("\n"):
-                    line = line.strip()
-                    if line.startswith("Name:"):
-                        in_answer = True
-                        continue
-                    if in_answer and line.startswith("Address"):
-                        ip = line.split(":")[-1].strip()
-                        if ip != server_ip:
-                            ips.append(ip)
+                ips = _parse_nslookup_answers(output, server_ip)
             if ips:
                 results.append(DiagnosticResult(
                     test_name=test_name, target=target, status=Status.PASS,

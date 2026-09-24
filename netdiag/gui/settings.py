@@ -18,7 +18,7 @@ _LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
 
 def default_report_dir() -> str:
     """Documents directory if available, otherwise the user home."""
-    docs = QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation)
+    docs = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DocumentsLocation)
     return docs if docs else str(Path.home())
 
 
@@ -31,7 +31,7 @@ class GuiSettings:
     # -- timeout (seconds, applied to ping/TCP where supported) ------------
     def timeout(self) -> int:
         try:
-            value = int(self._q.value("diagnostics/timeout", 5))
+            value = int(str(self._q.value("diagnostics/timeout", 5)))
         except (TypeError, ValueError):
             value = 5
         return min(max(value, 1), 60)
