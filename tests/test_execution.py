@@ -5,9 +5,11 @@
 import contextvars
 import threading
 import time
+from unittest.mock import patch
 
 import pytest
 
+from netdiag.utils import execution
 from netdiag.utils.execution import (
     CancelToken,
     ExecutionScope,
@@ -20,6 +22,11 @@ from netdiag.utils.execution import (
     current_scope,
     remember_resolution,
 )
+
+# remaining() is (deadline - now) in floating point. On a coarse clock (Windows
+# time.monotonic() ticks every ~15.6 ms) "now" can equal the start time, and
+# (t + budget) - t may exceed `budget` by a rounding error of ~1e-11.
+CLOCK_TOLERANCE_S = 1e-6
 
 
 class TestScanCancelled:
@@ -95,10 +102,18 @@ class TestExecutionScope:
     def test_budget_counts_down_and_expires(self):
         scope = ExecutionScope.with_budget(0.05)
         remaining = scope.remaining()
-        assert remaining is not None and 0 < remaining <= 0.05
+        assert remaining is not None and 0 < remaining <= 0.05 + CLOCK_TOLERANCE_S
         time.sleep(0.07)
         assert scope.remaining() == 0.0
         assert scope.expired
+
+    def test_remaining_on_a_clock_that_has_not_ticked(self):
+        """Deterministic version of the Windows coarse-clock case."""
+        with patch.object(execution.time, "monotonic", return_value=98765.4321):
+            scope = ExecutionScope.with_budget(0.05)
+            remaining = scope.remaining()
+            assert remaining == pytest.approx(0.05, abs=CLOCK_TOLERANCE_S)
+            assert not scope.expired
 
     def test_expire_forces_zero_remaining(self):
         scope = ExecutionScope.with_budget(60)

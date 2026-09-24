@@ -131,7 +131,8 @@ class TestTimeouts:
             with pytest.raises(subprocess.TimeoutExpired) as info:
                 process.run(SLEEP_30, capture_output=True, timeout=30)
         assert time.monotonic() - began < 8
-        assert info.value.timeout <= 0.5
+        # The capped timeout comes from the float remaining() (see test_execution.CLOCK_TOLERANCE_S).
+        assert info.value.timeout <= 0.5 + 1e-6
 
     def test_step_budget_applies_without_command_timeout(self):
         began = time.monotonic()
