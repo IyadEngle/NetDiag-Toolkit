@@ -37,6 +37,13 @@ def _parse_windows_ping(output: str) -> PingResult:
         result.received = int(recv_match.group(1))
     if lost_match:
         result.lost = int(lost_match.group(1))
+    # Windows counts "Reply from <router>: Destination host unreachable." (and
+    # "TTL expired in transit.") as Received. Only echo replies carry "TTL=".
+    echo_replies = len(re.findall(r"TTL=\d+", output, re.IGNORECASE))
+    if result.received > echo_replies:
+        result.received = echo_replies
+        if result.sent > 0:
+            result.lost = result.sent - echo_replies
     if result.sent > 0:
         result.loss_percent = round((result.lost / result.sent) * 100, 1)
     times = re.findall(r"time[=<]\s*(\d+)ms", output)

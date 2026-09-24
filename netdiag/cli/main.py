@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 
 import click
@@ -38,6 +39,32 @@ def _validate_target_option(ctx: click.Context, param: click.Parameter, value: s
     if not ok:
         raise click.BadParameter(normalized_or_error)
     return normalized_or_error
+
+
+def parse_ports(value: str) -> list[int]:
+    """Parse a comma-separated port list ("80,443"). Raises ValueError with a user-facing message."""
+    ports: list[int] = []
+    for item in value.split(","):
+        item = item.strip()
+        if not item:
+            continue
+        if not re.fullmatch(r"[0-9]+", item):
+            raise ValueError(f"'{item}' is not a port number (expected e.g. 80,443).")
+        port = int(item)
+        if not 1 <= port <= 65535:
+            raise ValueError(f"Port {port} is out of range (1-65535).")
+        if port not in ports:
+            ports.append(port)
+    if not ports:
+        raise ValueError("Specify at least one port (e.g. 80,443).")
+    return ports
+
+
+def _validate_ports_option(ctx: click.Context, param: click.Parameter, value: str) -> list[int]:
+    try:
+        return parse_ports(value)
+    except ValueError as exc:
+        raise click.BadParameter(str(exc)) from None
 
 
 def _target_option(*decls: str, **kwargs):
@@ -206,14 +233,14 @@ def mtu(target, min_size, max_size):
 
 @cli.command()
 @_target_option("--target", "-t")
-@click.option("--ports", "-p", default="80,443")
+@click.option("--ports", "-p", default="80,443", callback=_validate_ports_option,
+              help="Comma-separated TCP ports, e.g. 80,443")
 @click.option("--timeout", default=3.0, type=float)
 def tcp(target, ports, timeout):
     """TCP connectivity test to specified ports."""
     from netdiag.core.tcp import tcp_multi_port
-    port_list = [int(p.strip()) for p in ports.split(",")]
     report = ScanReport(target=target)
-    report.results = tcp_multi_port(target, ports=port_list, timeout_seconds=timeout)
+    report.results = tcp_multi_port(target, ports=ports, timeout_seconds=timeout)
     _output_report(report, "console", None)
 
 
@@ -240,13 +267,13 @@ def discover(subnet):
 
 @cli.command()
 @_target_option("--target", "-t")
-@click.option("--ports", "-p", default="21,22,80,443,3306,3389,8080")
+@click.option("--ports", "-p", default="21,22,80,443,3306,3389,8080", callback=_validate_ports_option,
+              help="Comma-separated TCP ports, e.g. 22,80,443")
 def scan(target, ports):
     """TCP port scan a target (authorized systems only)."""
     from netdiag.network.discovery import port_scan
-    port_list = [int(p.strip()) for p in ports.split(",")]
     report = ScanReport(target=target)
-    report.results = [port_scan(target, ports=port_list)]
+    report.results = [port_scan(target, ports=ports)]
     _output_report(report, "console", None)
 
 

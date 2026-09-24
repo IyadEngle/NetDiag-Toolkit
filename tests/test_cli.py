@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import importlib
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from click.testing import CliRunner
 
 import netdiag
-from netdiag.cli.main import cli, exit_code_for
+from netdiag.cli.main import cli, exit_code_for, parse_ports
 from netdiag.utils.models import (
     Confidence,
     DiagnosticResult,
@@ -111,3 +111,72 @@ class TestExitCodes:
             result = CliRunner().invoke(cli, ["diagnose", "-t", "example.com", "-r", "json"])
         assert result.exit_code == 1
         assert '"target": "example.com"' in result.output
+
+
+class TestPortsOption:
+    @pytest.mark.parametrize("command", ["tcp", "scan"])
+    @pytest.mark.parametrize("ports,message", [
+        ("80,abc", "'abc' is not a port number"),
+        ("80;443", "'80;443' is not a port number"),
+        ("70000", "out of range"),
+        ("0", "out of range"),
+        ("-1", "is not a port number"),
+        ("²", "is not a port number"),
+        (",", "at least one port"),
+        ("", "at least one port"),
+    ])
+    def test_invalid_ports_are_usage_errors(self, command, ports, message):
+        result = CliRunner().invoke(cli, [command, "-t", "example.com", f"--ports={ports}"])
+        assert result.exit_code == 2
+        assert message in result.output
+        assert "Traceback" not in result.output
+        assert not isinstance(result.exception, ValueError)
+
+    def test_parse_ports(self):
+        assert parse_ports("80, 443,80,,8080") == [80, 443, 8080]
+
+    def test_valid_ports_reach_tcp(self):
+        with patch("netdiag.core.tcp.tcp_multi_port", return_value=[]) as mock_tcp:
+            result = CliRunner().invoke(cli, ["tcp", "-t", "example.com", "-p", "22, 443"])
+        assert result.exit_code == 0
+        assert mock_tcp.call_args.kwargs["ports"] == [22, 443]
+
+    def test_valid_ports_reach_scan(self):
+        from netdiag.utils.models import DiagnosticResult as DR
+        fake = DR(test_name="tcp_port_scan", target="example.com", status=Status.PASS, evidence="", duration_ms=0)
+        with patch("netdiag.network.discovery.port_scan", return_value=fake) as mock_scan:
+            result = CliRunner().invoke(cli, ["scan", "-t", "example.com", "-p", "3389"])
+        assert result.exit_code == 0
+        assert mock_scan.call_args.kwargs["ports"] == [3389]
+
+
+class TestWiFiDoesNotFailRun:
+    """An Ethernet-only machine must not make `diagnose --wifi` / `full` exit non-zero."""
+
+    def _run(self, netsh_stdout: str, returncode: int, ping_result: DiagnosticResult | None = None):
+        passing = DiagnosticResult(test_name="x", target="example.com", status=Status.PASS,
+                                   evidence="ok", duration_ms=1)
+        netsh = MagicMock(stdout=netsh_stdout, stderr="", returncode=returncode)
+        with patch("netdiag.core.dns.resolve_hostname", return_value=passing), \
+             patch("netdiag.core.connectivity.ping", return_value=ping_result or passing), \
+             patch("netdiag.core.https.https_connectivity", return_value=passing), \
+             patch("netdiag.core.tcp.tcp_multi_port", return_value=[passing]), \
+             patch("netdiag.core.gateway.gateway_diagnostics", return_value=[passing]), \
+             patch("netdiag.network.wifi.platform.system", return_value="Windows"), \
+             patch("netdiag.network.wifi.subprocess.run", return_value=netsh):
+            return CliRunner().invoke(cli, ["diagnose", "-t", "example.com", "--wifi", "-r", "json"])
+
+    def test_no_wireless_interface_exits_zero(self):
+        result = self._run("There is no wireless interface on the system.\n", 1)
+        assert result.exit_code == 0
+        assert '"status": "SKIP"' in result.output
+
+    def test_disconnected_adapter_exits_zero(self):
+        result = self._run("There is 1 interface on the system:\n    State : disconnected\n", 0)
+        assert result.exit_code == 0
+
+    def test_real_diagnostic_failure_still_exits_one(self):
+        failing = DiagnosticResult(test_name="icmp_ping", target="example.com", status=Status.FAIL,
+                                   evidence="no replies", duration_ms=1)
+        result = self._run("There is no wireless interface on the system.\n", 1, ping_result=failing)
+        assert result.exit_code == 1

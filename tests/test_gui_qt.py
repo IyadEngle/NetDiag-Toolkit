@@ -109,6 +109,17 @@ class TestTargetBar:
         assert received == []
         assert bar.error_label.text() != ""
 
+    @pytest.mark.parametrize("text", ["1.2.3.999", "2001:db8::1", "-evil"])
+    def test_rejected_targets_show_error_and_do_not_emit(self, qapp, text):
+        from netdiag.gui.widgets.target_bar import TargetBar
+        bar = TargetBar()
+        received = []
+        bar.run_requested.connect(lambda t, m: received.append((t, m)))
+        bar.input.setText(text)
+        bar._request("full")
+        assert received == []
+        assert bar.error_label.text() != ""
+
     def test_set_busy_disables_buttons(self, qapp):
         from netdiag.gui.widgets.target_bar import TargetBar
         bar = TargetBar()

@@ -297,8 +297,11 @@ netdiag report --target example.com --reporter html --output report.html
 ## Targets
 
 Every `--target` is validated the same way as in the GUI: an IPv4 address or an
-RFC 1123 hostname, without URL scheme, path, whitespace, or a leading `-`.
-Invalid targets are rejected with a usage error (exit code 2).
+RFC 1123 hostname, without URL scheme, path, port, whitespace, or a leading `-`.
+Dotted numbers that are not valid IPv4 addresses (for example `1.2.3.999`) are
+rejected. IPv6 addresses are recognised but not supported yet (planned for 0.6).
+Invalid targets, and invalid `--ports` lists, are rejected with a usage error
+(exit code 2).
 
 ## Exit codes
 
@@ -315,6 +318,11 @@ Exit codes are bit flags, so scripts and CI jobs can test each condition:
 `WARN`, `SKIP`, `OBSERVATION` and `INCONCLUSIVE` results do not change the exit code.
 Diagnostics report `WARN` for partial packet loss and for a traceroute that does not
 reach its destination.
+
+Wi-Fi (`--wifi`, `full`, `network`) is `SKIP` when it does not apply: no wireless
+interface, WLAN service not running, or an adapter that is not connected (for example
+a machine on Ethernet). It is `WARN` while an adapter is still connecting or when its
+state cannot be read, so it never fails a run on its own.
 
 ---
 
@@ -421,6 +429,13 @@ GitHub Actions checks (on every branch and pull request):
 - Mypy (with PySide6 installed)
 - Unit tests on Linux, Python 3.10–3.13, including headless Qt GUI tests
 - Unit tests on Windows, including headless Qt GUI tests
+- PowerShell syntax check and Pester tests for `NetDiag.ps1`
+
+PowerShell tests (Pester 5):
+
+```powershell
+Invoke-Pester -Path tests/powershell
+```
 
 ---
 

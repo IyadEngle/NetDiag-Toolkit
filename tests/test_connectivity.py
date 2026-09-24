@@ -33,6 +33,46 @@ def _linux_ping_output(sent: int, received: int) -> str:
     return out
 
 
+class TestWindowsUnreachable:
+    UNREACHABLE = (
+        "Pinging 192.168.1.50 with 32 bytes of data:\n"
+        "Reply from 192.168.1.10: Destination host unreachable.\n"
+        "Reply from 192.168.1.10: Destination host unreachable.\n"
+        "Reply from 192.168.1.10: Destination host unreachable.\n"
+        "Reply from 192.168.1.10: Destination host unreachable.\n\n"
+        "Ping statistics for 192.168.1.50:\n"
+        "    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss),\n"
+    )
+
+    def test_unreachable_replies_are_not_received(self):
+        r = _parse_windows_ping(self.UNREACHABLE)
+        assert r.sent == 4 and r.received == 0 and r.lost == 4 and r.loss_percent == 100.0
+
+    def test_mixed_echo_and_unreachable(self):
+        output = (
+            "Reply from 192.168.1.50: bytes=32 time=3ms TTL=64\n"
+            "Reply from 192.168.1.10: Destination host unreachable.\n"
+            "Request timed out.\n"
+            "Reply from 192.168.1.50: bytes=32 time<1ms TTL=64\n\n"
+            "    Packets: Sent = 4, Received = 3, Lost = 1 (25% loss),\n"
+        )
+        r = _parse_windows_ping(output)
+        assert r.received == 2 and r.lost == 2 and r.loss_percent == 50.0
+
+    def test_ttl_expired_is_not_a_reply(self):
+        output = (
+            "Reply from 10.0.0.1: TTL expired in transit.\n\n"
+            "    Packets: Sent = 1, Received = 1, Lost = 0 (0% loss),\n"
+        )
+        assert _parse_windows_ping(output).received == 0
+
+    @patch("netdiag.core.connectivity.platform.system", return_value="Windows")
+    def test_ping_status_is_fail(self, _os):
+        with patch("netdiag.core.connectivity.subprocess.run",
+                   return_value=MagicMock(stdout=self.UNREACHABLE, stderr="")):
+            assert ping("192.168.1.50").status == Status.FAIL
+
+
 @patch("netdiag.core.connectivity.platform.system", return_value="Linux")
 class TestPingStatus:
     def _ping(self, output: str):

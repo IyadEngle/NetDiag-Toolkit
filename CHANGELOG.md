@@ -17,6 +17,13 @@ Copyright (c) 2026 Iyad Engle
 - GUI: closing the window during a scan could destroy a running QThread; close now waits
   for the current step to finish
 - GUI: cancelling a scan discarded completed results; partial results are kept and exportable
+- Wi-Fi: a machine without an active Wi-Fi connection (e.g. on Ethernet) made `full`
+  and `diagnose --wifi` exit 1; "not applicable" is now `SKIP`, in-progress/unreadable is `WARN`
+- Windows ping counted "Destination host unreachable" and "TTL expired" replies as received
+- Invalid IPv4-looking targets such as `1.2.3.999` were accepted as hostnames
+- Invalid `--ports` values crashed with a traceback; they are now usage errors (exit 2)
+- `NetDiag.ps1` reported 100% packet loss on PowerShell 7 (`Latency` replaced `ResponseTime`)
+  and discarded all samples when any probe failed
 
 ### Changed
 - Ping with partial packet loss is `WARN` (was `PASS`)
@@ -25,6 +32,10 @@ Copyright (c) 2026 Iyad Engle
   4 security FAIL, 5 both); previously always 0
 - CLI targets use the GUI's validation (`netdiag.utils.validation`); targets beginning with
   `-` are rejected so they cannot be read as options by system tools
+- Target validation separates parsing (`parse_target`, which recognises IPv4, IPv6 and
+  hostnames) from support policy (`IPV6_TARGETS_SUPPORTED`); IPv6 is rejected as
+  "not supported yet" rather than by the parser
+- `NetDiag.ps1` can be dot-sourced to load its functions without running; Pester tests in CI
 - CI runs on every branch, installs the GUI extra (Qt tests were previously always skipped),
   lints `tests/`, and tests Python 3.10–3.13
 - Removed committed `__pycache__` files; `.gitignore` covers Python and tool caches
