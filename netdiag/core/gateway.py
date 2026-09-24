@@ -7,9 +7,9 @@ from __future__ import annotations
 
 import platform
 import re
-import subprocess
 import time
 
+from netdiag.utils import process
 from netdiag.utils.models import DiagnosticResult, Status
 
 
@@ -17,12 +17,12 @@ def get_default_gateway() -> str | None:
     os_name = platform.system()
     try:
         if os_name == "Windows":
-            result = subprocess.run(["route", "print", "0.0.0.0"], capture_output=True, text=True, timeout=5)
+            result = process.run(["route", "print", "0.0.0.0"], capture_output=True, text=True, timeout=5)
             match = re.search(r"0\.0\.0\.0\s+0\.0\.0\.0\s+(\d+\.\d+\.\d+\.\d+)", result.stdout)
             if match:
                 return match.group(1)
         elif os_name == "Linux":
-            result = subprocess.run(["ip", "route", "show", "default"], capture_output=True, text=True, timeout=5)
+            result = process.run(["ip", "route", "show", "default"], capture_output=True, text=True, timeout=5)
             match = re.search(r"default via (\d+\.\d+\.\d+\.\d+)", result.stdout)
             if match:
                 return match.group(1)

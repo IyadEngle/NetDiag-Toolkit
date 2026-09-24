@@ -7,9 +7,9 @@ from __future__ import annotations
 
 import ipaddress
 import socket
-import subprocess
 import time
 
+from netdiag.utils import process
 from netdiag.utils.models import DiagnosticResult, Status
 
 
@@ -101,7 +101,7 @@ def compare_dns_servers(target: str) -> list[DiagnosticResult]:
                     evidence=f"DNS comparison not supported on {os_name}", duration_ms=0,
                 ))
                 continue
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+            proc = process.run(cmd, capture_output=True, text=True, timeout=5)
             duration_ms = (time.monotonic() - start) * 1000
             output = proc.stdout.strip()
             if os_name == "Linux":

@@ -13,6 +13,7 @@ import logging
 import socket
 import subprocess
 
+from netdiag.utils import process
 from netdiag.utils.models import Confidence, SecurityFinding, SecurityStatus, Severity
 
 logger = logging.getLogger("netdiag.security.dns_security")
@@ -98,7 +99,7 @@ def _dnskey_query(target: str, timeout: int = 10) -> tuple[str, str]:
 
 def _dnssec_check_dig(target: str, timeout: int = 10) -> tuple[str, str]:
     try:
-        result = subprocess.run(["dig", "DNSKEY", target, "+short"], capture_output=True, text=True, timeout=timeout)
+        result = process.run(["dig", "DNSKEY", target, "+short"], capture_output=True, text=True, timeout=timeout)
         if result.returncode == 0:
             if result.stdout.strip():
                 return "KEYS_DETECTED", f"Found DNSKEY records for {target}"
@@ -215,8 +216,8 @@ def _open_resolver_check_dnspython(target: str, timeout: int = 5) -> tuple:
 
 def _open_resolver_check_dig(target: str, timeout: int = 5) -> tuple:
     try:
-        result = subprocess.run(["dig", f"@{target}", "example.com", "+time=3", "+tries=1"],
-                                capture_output=True, text=True, timeout=timeout)
+        result = process.run(["dig", f"@{target}", "example.com", "+time=3", "+tries=1"],
+                             capture_output=True, text=True, timeout=timeout)
         if result.returncode == 0 and "ANSWER SECTION" in result.stdout:
             return True, f"dig @{target} returned ANSWER SECTION"
         return False, f"Server did not return an answer (exit code: {result.returncode})"

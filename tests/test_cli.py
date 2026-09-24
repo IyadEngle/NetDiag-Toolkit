@@ -163,7 +163,7 @@ class TestWiFiDoesNotFailRun:
              patch("netdiag.core.tcp.tcp_multi_port", return_value=[passing]), \
              patch("netdiag.core.gateway.gateway_diagnostics", return_value=[passing]), \
              patch("netdiag.network.wifi.platform.system", return_value="Windows"), \
-             patch("netdiag.network.wifi.subprocess.run", return_value=netsh):
+             patch("netdiag.network.wifi.process.run", return_value=netsh):
             return CliRunner().invoke(cli, ["diagnose", "-t", "example.com", "--wifi", "-r", "json"])
 
     def test_no_wireless_interface_exits_zero(self):

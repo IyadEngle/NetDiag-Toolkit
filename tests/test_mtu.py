@@ -15,7 +15,7 @@ class TestMTUUnit:
 
 
 def _fake_ping(flag: str, max_payload: int, ok_text: str):
-    """subprocess.run stand-in: replies only when the payload after `flag` fits."""
+    """process.run stand-in: replies only when the payload after `flag` fits."""
     sizes: list[int] = []
 
     def run(cmd, **kwargs):
@@ -32,7 +32,7 @@ class TestMTUEstimate:
     @patch("netdiag.core.mtu.platform.system", return_value="Linux")
     def test_linux_1500_path_reports_1500(self, _os):
         run, sizes = _fake_ping("-s", 1472, "1 packets transmitted, 1 received, 0% packet loss")
-        with patch("netdiag.core.mtu.subprocess.run", side_effect=run):
+        with patch("netdiag.core.mtu.process.run", side_effect=run):
             result = estimate_path_mtu("192.0.2.1")
         assert result.status == Status.PASS
         assert result.details == {"mtu_estimate": 1500, "max_payload": 1472}
@@ -41,14 +41,14 @@ class TestMTUEstimate:
     @patch("netdiag.core.mtu.platform.system", return_value="Windows")
     def test_windows_1500_path_reports_1500(self, _os):
         run, _ = _fake_ping("-l", 1472, "Reply from 192.0.2.1: bytes=1472 time=1ms TTL=57")
-        with patch("netdiag.core.mtu.subprocess.run", side_effect=run):
+        with patch("netdiag.core.mtu.process.run", side_effect=run):
             result = estimate_path_mtu("192.0.2.1")
         assert result.details == {"mtu_estimate": 1500, "max_payload": 1472}
 
     @patch("netdiag.core.mtu.platform.system", return_value="Linux")
     def test_linux_and_windows_agree_on_smaller_path(self, _os):
         run, _ = _fake_ping("-s", 1372, "1 packets transmitted, 1 received")  # 1400-byte path
-        with patch("netdiag.core.mtu.subprocess.run", side_effect=run):
+        with patch("netdiag.core.mtu.process.run", side_effect=run):
             assert estimate_path_mtu("192.0.2.1").details["mtu_estimate"] == 1400
 
 

@@ -11,6 +11,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 
+from netdiag.utils import process
 from netdiag.utils.models import DiagnosticResult, Status
 
 
@@ -89,7 +90,7 @@ def ping(target: str, count: int = 4, timeout_seconds: int = 10) -> DiagnosticRe
                 evidence=f"Ping not supported on {os_name}", duration_ms=0,
             )
 
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_seconds + count + 5)
+        proc = process.run(cmd, capture_output=True, text=True, timeout=timeout_seconds + count + 5)
         output = proc.stdout + proc.stderr
         duration_ms = (time.monotonic() - start) * 1000
 

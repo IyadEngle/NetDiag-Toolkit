@@ -7,10 +7,10 @@ from __future__ import annotations
 
 import platform
 import socket
-import subprocess
 import time
 from typing import Any
 
+from netdiag.utils import process
 from netdiag.utils.models import DiagnosticResult, Status
 
 
@@ -45,7 +45,7 @@ def _fallback_adapters() -> list[dict[str, Any]]:
     adapters: list[dict[str, Any]] = []
     if os_name == "Windows":
         try:
-            result = subprocess.run(
+            result = process.run(
                 ["ipconfig", "/all"], capture_output=True, text=True,
                 timeout=10, encoding="utf-8", errors="replace",
             )
@@ -65,7 +65,7 @@ def _fallback_adapters() -> list[dict[str, Any]]:
             pass
     elif os_name == "Linux":
         try:
-            result = subprocess.run(["ip", "-o", "addr", "show"], capture_output=True, text=True, timeout=10)
+            result = process.run(["ip", "-o", "addr", "show"], capture_output=True, text=True, timeout=10)
             for line in result.stdout.split("\n"):
                 parts = line.split()
                 if len(parts) >= 4:

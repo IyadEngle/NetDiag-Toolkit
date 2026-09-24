@@ -118,7 +118,7 @@ WINDOWS_REACHED_IP_TARGET = (
 
 def _run_trace(os_name: str, output: str, target: str):
     with patch.object(traceroute_module.platform, "system", return_value=os_name), \
-         patch.object(traceroute_module.subprocess, "run", return_value=MagicMock(stdout=output)):
+         patch.object(traceroute_module.process, "run", return_value=MagicMock(stdout=output)):
         return traceroute(target)
 
 

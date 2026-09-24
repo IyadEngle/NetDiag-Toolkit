@@ -55,7 +55,7 @@ class TestNslookupParsing:
         assert _parse_nslookup_answers(output, "8.8.8.8") == []
 
     @patch("platform.system", return_value="Windows")
-    @patch("netdiag.core.dns.subprocess.run")
+    @patch("netdiag.core.dns.process.run")
     def test_compare_uses_parser_on_windows(self, mock_run, _os):
         mock_run.return_value = MagicMock(
             stdout=NSLOOKUP_HEADER + "Name:    one.one.one.one\nAddress:  2606:4700:4700::1111\n")

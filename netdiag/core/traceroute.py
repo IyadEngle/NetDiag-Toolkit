@@ -12,6 +12,7 @@ import subprocess
 import time
 from dataclasses import dataclass, field
 
+from netdiag.utils import process
 from netdiag.utils.models import DiagnosticResult, Status
 
 _IPV4 = r"\d+\.\d+\.\d+\.\d+"
@@ -87,7 +88,7 @@ def traceroute(target: str, max_hops: int = 30, timeout_seconds: int = 60) -> Di
                 evidence=f"Traceroute not supported on {os_name}", duration_ms=0,
             )
 
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_seconds)
+        proc = process.run(cmd, capture_output=True, text=True, timeout=timeout_seconds)
         output = proc.stdout
         duration_ms = (time.monotonic() - start) * 1000
 

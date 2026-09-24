@@ -68,7 +68,7 @@ class TestWindowsUnreachable:
 
     @patch("netdiag.core.connectivity.platform.system", return_value="Windows")
     def test_ping_status_is_fail(self, _os):
-        with patch("netdiag.core.connectivity.subprocess.run",
+        with patch("netdiag.core.connectivity.process.run",
                    return_value=MagicMock(stdout=self.UNREACHABLE, stderr="")):
             assert ping("192.168.1.50").status == Status.FAIL
 
@@ -76,7 +76,7 @@ class TestWindowsUnreachable:
 @patch("netdiag.core.connectivity.platform.system", return_value="Linux")
 class TestPingStatus:
     def _ping(self, output: str):
-        with patch("netdiag.core.connectivity.subprocess.run",
+        with patch("netdiag.core.connectivity.process.run",
                    return_value=MagicMock(stdout=output, stderr="")):
             return ping("192.0.2.1", count=4)
 

@@ -54,7 +54,7 @@ WLANSVC_STOPPED = "The Wireless AutoConfig Service (wlansvc) is not running.\n"
 def _wifi(stdout: str, returncode: int = 0, stderr: str = ""):
     proc = MagicMock(stdout=stdout, stderr=stderr, returncode=returncode)
     with patch("netdiag.network.wifi.platform.system", return_value="Windows"), \
-         patch("netdiag.network.wifi.subprocess.run", return_value=proc):
+         patch("netdiag.network.wifi.process.run", return_value=proc):
         return wifi_info()
 
 
@@ -92,12 +92,12 @@ class TestWindowsWiFiStatus:
 
     def test_netsh_missing_is_skip(self):
         with patch("netdiag.network.wifi.platform.system", return_value="Windows"), \
-             patch("netdiag.network.wifi.subprocess.run", side_effect=FileNotFoundError):
+             patch("netdiag.network.wifi.process.run", side_effect=FileNotFoundError):
             assert wifi_info().status == Status.SKIP
 
     def test_unexpected_error_is_error(self):
         with patch("netdiag.network.wifi.platform.system", return_value="Windows"), \
-             patch("netdiag.network.wifi.subprocess.run", side_effect=PermissionError("denied")):
+             patch("netdiag.network.wifi.process.run", side_effect=PermissionError("denied")):
             result = wifi_info()
         assert result.status == Status.ERROR
 

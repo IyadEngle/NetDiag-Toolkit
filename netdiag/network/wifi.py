@@ -19,9 +19,9 @@ from __future__ import annotations
 
 import platform
 import re
-import subprocess
 import time
 
+from netdiag.utils import process
 from netdiag.utils.models import DiagnosticResult, Status
 
 # netsh messages meaning there is no usable Wi-Fi subsystem on this machine.
@@ -65,7 +65,7 @@ def wifi_info() -> DiagnosticResult:
 
     start = time.monotonic()
     try:
-        result = subprocess.run(
+        result = process.run(
             ["netsh", "wlan", "show", "interfaces"],
             capture_output=True, text=True, timeout=10,
             encoding="utf-8", errors="replace",
